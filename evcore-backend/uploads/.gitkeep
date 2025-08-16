@@ -1,0 +1,5 @@
+# Uploads Directory
+
+This directory stores uploaded files.
+
+Files in this directory are ignored by git except for this placeholder file.

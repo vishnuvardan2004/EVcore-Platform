@@ -1,0 +1,149 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* EVZIP Design System - Colors, gradients, fonts, etc */
+
+@layer base {
+  :root {
+    --background: 233 100% 98%; /* Soft Aqua Background #E9FFF8 */
+    --foreground: 218 100% 9%; /* Dark Navy #0C0C2E */
+
+    --card: 0 0% 100%;
+    --card-foreground: 218 100% 9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 100% 9%;
+
+    --primary: 218 100% 9%; /* Dark Navy #0C0C2E */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 146 70% 62%; /* EV Green #60D394 */
+    --secondary-foreground: 218 100% 9%;
+
+    --muted: 233 100% 96%;
+    --muted-foreground: 218 50% 45%;
+
+    --accent: 146 70% 62%; /* EV Green #60D394 */
+    --accent-foreground: 218 100% 9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 146 30% 85%;
+    --input: 146 30% 90%;
+    --ring: 146 70% 62%;
+
+    --radius: 0.75rem; /* More rounded for modern look */
+
+    --sidebar-background: 218 100% 9%; /* Dark Navy */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 146 70% 62%; /* EV Green */
+    --sidebar-primary-foreground: 218 100% 9%;
+    --sidebar-accent: 146 70% 62%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 218 80% 15%;
+    --sidebar-ring: 146 70% 62%;
+  }
+
+  .dark {
+    --background: 218 100% 9%;
+    --foreground: 0 0% 100%;
+
+    --card: 218 90% 12%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 218 90% 12%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 146 70% 62%;
+    --primary-foreground: 218 100% 9%;
+
+    --secondary: 218 80% 15%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 218 80% 15%;
+    --muted-foreground: 218 30% 70%;
+
+    --accent: 146 70% 62%;
+    --accent-foreground: 218 100% 9%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 218 80% 15%;
+    --input: 218 80% 15%;
+    --ring: 146 70% 62%;
+
+    --sidebar-background: 218 100% 9%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 146 70% 62%;
+    --sidebar-primary-foreground: 218 100% 9%;
+    --sidebar-accent: 146 70% 62%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 218 80% 15%;
+    --sidebar-ring: 146 70% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 400;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    color: hsl(var(--foreground));
+  }
+}
+
+/* EVZIP Custom Components */
+@layer components {
+  .evzip-button {
+    @apply bg-accent text-accent-foreground hover:bg-accent/90 rounded-xl px-6 py-3 font-semibold transition-all duration-200 hover:scale-105 shadow-sm;
+  }
+
+  .evzip-card {
+    @apply bg-card text-card-foreground rounded-xl shadow-sm border border-border/50 p-6 transition-all duration-200 hover:shadow-md;
+  }
+
+  .evzip-navbar {
+    @apply bg-primary text-primary-foreground border-b border-primary/20;
+  }
+
+  .evzip-sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+  }
+
+  .evzip-sidebar-item.active {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground font-semibold;
+  }
+
+  /* Hide scrollbars for sidebar */
+  .sidebar-no-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+  }
+
+  .sidebar-no-scrollbar::-webkit-scrollbar {
+    display: none; /* WebKit */
+  }
+
+  /* Hide scrollbars for all sidebar content areas */
+  [data-sidebar="sidebar"] * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  [data-sidebar="sidebar"] *::-webkit-scrollbar {
+    display: none !important;
+  }
+}
