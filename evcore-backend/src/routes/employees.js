@@ -104,9 +104,9 @@ router.use(verifyToken);
 
 // @desc    Get all employees
 // @route   GET /api/employees
-// @access  Private (admin, hr, leadership)
+// @access  Private (admin)
 router.get('/', 
-  authorize(['super_admin', 'admin', 'leadership', 'hr']),
+  authorize(['super_admin', 'admin']),
   async (req, res) => {
     try {
       const employees = await User.find({ 
@@ -131,7 +131,7 @@ router.get('/',
 
 // @desc    Get single employee
 // @route   GET /api/employees/:id
-// @access  Private (admin, hr, leadership, or self)
+// @access  Private (admin or self)
 router.get('/:id',
   async (req, res) => {
     try {
@@ -148,8 +148,6 @@ router.get('/:id',
       // Check if user can access this employee
       if (req.user.role !== 'super_admin' && 
           req.user.role !== 'admin' && 
-          req.user.role !== 'leadership' && 
-          req.user.role !== 'hr' &&
           req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
@@ -173,9 +171,9 @@ router.get('/:id',
 
 // @desc    Create new employee
 // @route   POST /api/employees
-// @access  Private (admin, hr)
+// @access  Private (admin)
 router.post('/',
-  authorize(['super_admin', 'admin', 'hr']),
+  authorize(['super_admin', 'admin']),
   employeeValidation,
   validateRequest,
   async (req, res) => {
@@ -237,7 +235,7 @@ router.post('/',
 
 // @desc    Update employee
 // @route   PUT /api/employees/:id
-// @access  Private (admin, hr, or self)
+// @access  Private (admin or self)
 router.put('/:id',
   updateEmployeeValidation,
   validateRequest,
@@ -255,7 +253,6 @@ router.put('/:id',
       // Check if user can update this employee
       if (req.user.role !== 'super_admin' && 
           req.user.role !== 'admin' && 
-          req.user.role !== 'hr' &&
           req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,

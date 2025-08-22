@@ -82,38 +82,64 @@ class DatabaseService {
       }
     };
 
-    // Vehicle Schema
+    // Vehicle Schema - Updated to match exact attachment requirements
     const vehicleSchema = {
       name: 'Vehicle',
       fields: {
-        vehicleId: { type: 'String', required: true },
-        make: { type: 'String', required: true },
-        model: { type: 'String', required: true },
-        year: { type: 'Number', required: true, min: 2000 },
-        licensePlate: { type: 'String', required: true },
-        batteryCapacity: { type: 'Number', required: true }, // kWh
-        currentBatteryLevel: { type: 'Number', min: 0, max: 100, default: 100 },
-        range: { type: 'Number', required: true }, // km
-        status: { type: 'String', enum: ['available', 'in_use', 'charging', 'maintenance'], default: 'available' },
-        location: {
-          lat: { type: 'Number' },
-          lng: { type: 'Number' },
-          address: { type: 'String' }
-        },
-        assignedPilot: { type: 'ObjectId', ref: 'Pilot' },
+        Vehicle_ID: { type: 'String', required: true },
+        VIN_Number: { type: 'String', required: true },
+        Engine_Number: { type: 'String', required: true },
+        Registration_Number: { type: 'String', required: true },
+        Registration_Date: { type: 'String', required: true },
+        Brand: { type: 'String', required: true },
+        Model: { type: 'String', required: true },
+        Variant: { type: 'String' },
+        Year: { type: 'Number', required: true, min: 2000 },
+        Body_Type: { type: 'String', enum: ['Sedan', 'SUV', 'Hatchback', 'Crossover', 'Van', 'Truck', 'Other'] },
+        Fuel_Type: { type: 'String', enum: ['Electric', 'Hybrid', 'Petrol', 'Diesel', 'CNG'], default: 'Electric' },
+        Transmission_Type: { type: 'String', enum: ['Automatic', 'Manual', 'CVT'] },
+        Seating_Capacity: { type: 'Number', min: 1, max: 20 },
+        Engine_Capacity: { type: 'String' },
+        Max_Power: { type: 'String' },
+        Max_Torque: { type: 'String' },
+        Battery_Capacity: { type: 'Number' }, // kWh
+        Battery_Type: { type: 'String' },
+        Range_WLTP: { type: 'Number' }, // km
+        Charging_Type: { type: 'String', enum: ['AC', 'DC', 'AC+DC', 'Plug-in'] },
+        Max_Charging_Speed: { type: 'String' },
+        Color: { type: 'String' },
+        Status: { type: 'String', enum: ['Active', 'Maintenance', 'Out of Service', 'Retired'], default: 'Active' },
+        Current_Location: { type: 'String' },
+        Home_Station: { type: 'String' },
+        Insurance_Provider: { type: 'String' },
+        Insurance_Policy_Number: { type: 'String' },
+        Insurance_Expiry: { type: 'String' },
+        PUC_Expiry: { type: 'String' },
+        Fitness_Certificate_Expiry: { type: 'String' },
+        Permit_Expiry: { type: 'String' },
+        Road_Tax_Expiry: { type: 'String' },
+        Assigned_Pilot_ID: { type: 'String' },
+        Maintenance_Due_Date: { type: 'String' },
+        Last_Service_Date: { type: 'String' },
+        Purchase_Date: { type: 'String' },
+        Purchase_Price: { type: 'Number' },
+        Depreciation_Method: { type: 'String', enum: ['Straight Line', 'Declining Balance', 'Units of Production'] },
+        Book_Value: { type: 'Number' },
         isActive: { type: 'Boolean', default: true },
         createdBy: { type: 'ObjectId', ref: 'User' },
         updatedBy: { type: 'ObjectId', ref: 'User' }
       },
       indexes: [
-        { fields: { vehicleId: 1 }, options: { unique: true } },
-        { fields: { licensePlate: 1 }, options: { unique: true } },
-        { fields: { status: 1, isActive: 1 } },
-        { fields: { assignedPilot: 1 } }
+        { fields: { Vehicle_ID: 1 }, options: { unique: true } },
+        { fields: { VIN_Number: 1 }, options: { unique: true } },
+        { fields: { Registration_Number: 1 }, options: { unique: true } },
+        { fields: { Status: 1, isActive: 1 } },
+        { fields: { Assigned_Pilot_ID: 1 } },
+        { fields: { Brand: 1, Model: 1 } }
       ],
       validation: {
-        required: ['vehicleId', 'make', 'model', 'year', 'licensePlate', 'batteryCapacity', 'range'],
-        unique: ['vehicleId', 'licensePlate']
+        required: ['Vehicle_ID', 'VIN_Number', 'Engine_Number', 'Registration_Number', 'Registration_Date', 'Brand', 'Model', 'Year'],
+        unique: ['Vehicle_ID', 'VIN_Number', 'Registration_Number']
       }
     };
 

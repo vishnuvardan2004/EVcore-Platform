@@ -60,6 +60,25 @@ const userSchema = new mongoose.Schema({
   passwordResetToken: String,
   passwordResetExpires: Date,
   
+  // Password Security Fields
+  isTemporaryPassword: {
+    type: Boolean,
+    default: false
+  },
+  
+  mustChangePassword: {
+    type: Boolean,
+    default: false
+  },
+  
+  passwordHistory: [{
+    password: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
   // Role and Permissions
   role: {
     type: String,
@@ -151,6 +170,19 @@ userSchema.pre('save', async function(next) {
   // Only run this function if password was actually modified
   if (!this.isModified('password')) return next();
 
+  // Save previous password to history (keep last 5)
+  if (!this.isNew && this.password) {
+    this.passwordHistory.push({
+      password: this.password,
+      createdAt: new Date()
+    });
+    
+    // Keep only last 5 passwords
+    if (this.passwordHistory.length > 5) {
+      this.passwordHistory = this.passwordHistory.slice(-5);
+    }
+  }
+
   // Hash the password with cost of 12
   this.password = await bcrypt.hash(this.password, config.security.bcryptRounds);
 
@@ -164,12 +196,30 @@ userSchema.pre('save', function(next) {
   if (!this.isModified('password') || this.isNew) return next();
 
   this.passwordChangedAt = Date.now() - 1000;
+  
+  // Reset temporary password flags when password is changed
+  if (this.isTemporaryPassword || this.mustChangePassword) {
+    this.isTemporaryPassword = false;
+    this.mustChangePassword = false;
+  }
+  
   next();
 });
 
 // Instance method to check password
 userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
   return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+// Instance method to check if password was used recently
+userSchema.methods.isPasswordReused = async function(newPassword) {
+  for (const oldPasswordEntry of this.passwordHistory) {
+    const isMatch = await bcrypt.compare(newPassword, oldPasswordEntry.password);
+    if (isMatch) {
+      return true;
+    }
+  }
+  return false;
 };
 
 // Instance method to check if password changed after JWT was issued

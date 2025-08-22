@@ -2,7 +2,13 @@ const express = require('express');
 const { body } = require('express-validator');
 const authController = require('../controllers/authController');
 const { verifyToken, authorize } = require('../middleware/auth');
-const { authRateLimit } = require('../middleware/security');
+const { 
+  authRateLimit, 
+  authEmailRateLimit, 
+  passwordChangeRateLimit,
+  requestFingerprint,
+  securityAuditLog
+} = require('../middleware/securityEnhanced');
 const { validateRequest } = require('../middleware/validation');
 
 const router = express.Router();
@@ -127,10 +133,32 @@ const updateProfileValidation = [
     .withMessage('Designation cannot exceed 50 characters')
 ];
 
-// Public routes
-router.post('/register', authRateLimit, registerValidation, validateRequest, authController.register);
-router.post('/login', authRateLimit, loginValidation, validateRequest, authController.login);
-router.post('/refresh', authRateLimit, refreshTokenValidation, validateRequest, authController.refreshToken);
+// Public routes with enhanced security
+router.post('/register', 
+  authRateLimit, 
+  requestFingerprint,
+  securityAuditLog,
+  registerValidation, 
+  validateRequest, 
+  authController.register
+);
+
+router.post('/login', 
+  authRateLimit, 
+  authEmailRateLimit,
+  requestFingerprint,
+  securityAuditLog,
+  loginValidation, 
+  validateRequest, 
+  authController.login
+);
+
+router.post('/refresh', 
+  authRateLimit, 
+  refreshTokenValidation, 
+  validateRequest, 
+  authController.refreshToken
+);
 
 // Token verification route (needs special handling)
 router.get('/verify', authController.verifyTokenEndpoint);
@@ -141,6 +169,31 @@ router.use(verifyToken); // Apply authentication to all routes below
 router.post('/logout', authController.logout);
 router.get('/me', authController.getMe);
 router.put('/profile', updateProfileValidation, validateRequest, authController.updateProfile);
-router.put('/change-password', changePasswordValidation, validateRequest, authController.changePassword);
+router.put('/change-password', 
+  passwordChangeRateLimit,
+  securityAuditLog,
+  changePasswordValidation, 
+  validateRequest, 
+  authController.changePassword
+);
+
+router.put('/first-login-password-change', 
+  passwordChangeRateLimit,
+  securityAuditLog,
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('New password must be at least 8 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('New password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  body('newPasswordConfirm')
+    .custom((value, { req }) => {
+      if (value !== req.body.newPassword) {
+        throw new Error('Password confirmation does not match new password');
+      }
+      return true;
+    }),
+  validateRequest, 
+  authController.firstLoginPasswordChange
+);
 
 module.exports = router;

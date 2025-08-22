@@ -4,12 +4,18 @@ const User = require('../models/User');
 const RolePermission = require('../models/RolePermission');
 const config = require('../config');
 
-// Verify JWT Token
+// Verify JWT Token (supports both cookies and bearer tokens)
 const verifyToken = catchAsync(async (req, res, next) => {
   // 1) Getting token and check if it's there
   let token;
+  
+  // Check for token in Authorization header (Bearer token)
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
+  }
+  // Check for token in httpOnly cookies (more secure)
+  else if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
   }
 
   if (!token) {
@@ -43,9 +49,28 @@ const verifyToken = catchAsync(async (req, res, next) => {
 // Authorize based on roles
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return next(new AppError('You do not have permission to perform this action', 403));
+    console.log('🔐 Authorization check:', {
+      userRole: req.user?.role,
+      userEmail: req.user?.email,
+      allowedRoles: roles,
+      endpoint: req.path
+    });
+
+    if (!req.user) {
+      console.log('❌ No user found in request');
+      return next(new AppError('Authentication required', 401));
     }
+
+    if (!roles.includes(req.user.role)) {
+      console.log('❌ Authorization failed:', {
+        userRole: req.user.role,
+        allowedRoles: roles,
+        message: `User with role '${req.user.role}' not in allowed roles: [${roles.join(', ')}]`
+      });
+      return next(new AppError(`Access denied. Required roles: ${roles.join(', ')}. Your role: ${req.user.role}`, 403));
+    }
+
+    console.log('✅ Authorization successful for role:', req.user.role);
     next();
   };
 };

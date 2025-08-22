@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const config = require('./config');
 const database = require('./config/database');
 const logger = require('./utils/logger');
@@ -10,15 +11,13 @@ const {
   securityHeaders,
   dataSanitization,
   compressionMiddleware 
-} = require('./middleware/security');
+} = require('./middleware/securityEnhanced');
 const requestLogger = require('./middleware/requestLogger');
 const { globalErrorHandler, notFound } = require('./middleware/errorHandler');
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
-const adminSettingsRoutes = require('./routes/adminSettings');
-const databaseManagementRoutes = require('./routes/databaseManagement');
 const databaseMgmtRoutes = require('./routes/databaseMgmt');
 // const pilotsRoutes = require('./routes/pilots');
 // const driverInductionRoutes = require('./routes/driverInduction');
@@ -69,6 +68,9 @@ class App {
     // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    
+    // Cookie parser middleware (for secure httpOnly cookies)
+    this.app.use(cookieParser());
 
     // Data sanitization
     this.app.use(dataSanitization);
@@ -94,8 +96,6 @@ class App {
     // API routes
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/employees', employeeRoutes);
-    this.app.use('/api/admin-settings', adminSettingsRoutes);
-    this.app.use('/api/database', databaseManagementRoutes);
     this.app.use('/api/database-mgmt', databaseMgmtRoutes);
     // this.app.use('/api/pilots', pilotsRoutes);
     // this.app.use('/api/driver-induction', driverInductionRoutes);

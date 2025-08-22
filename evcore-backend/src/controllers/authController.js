@@ -6,23 +6,44 @@ const RolePermission = require('../models/RolePermission');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-// Helper function to create and send token
+// Helper function to create and send token with secure cookies
 const createSendToken = async (user, statusCode, res, message = 'Success') => {
   const token = user.generateAuthToken();
   const refreshToken = user.generateRefreshToken();
   
   await user.save({ validateBeforeSave: false });
 
-  // Remove password from output
+  // Set httpOnly cookies for tokens
+  const cookieOptions = {
+    httpOnly: true,
+    secure: config.isProduction, // Only send over HTTPS in production
+    sameSite: config.isProduction ? 'strict' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours for access token
+  };
+
+  const refreshCookieOptions = {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for refresh token
+  };
+
+  // Set secure cookies
+  res.cookie('accessToken', token, cookieOptions);
+  res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+
+  // Remove password and tokens from output
   user.password = undefined;
   user.refreshTokens = undefined;
+
+  // Check if this is first login (password change required)
+  const requirePasswordChange = user.isTemporaryPassword || user.mustChangePassword;
 
   res.status(statusCode).json({
     success: true,
     message,
     data: {
-      token,
-      refreshToken,
+      // Still send token for non-cookie clients (mobile apps)
+      token: config.isDevelopment ? token : undefined,
+      refreshToken: config.isDevelopment ? refreshToken : undefined,
       user: {
         id: user._id,
         fullName: user.fullName,
@@ -32,7 +53,8 @@ const createSendToken = async (user, statusCode, res, message = 'Success') => {
         department: user.department,
         designation: user.designation,
         verified: user.verified,
-        lastLogin: user.lastLogin
+        lastLogin: user.lastLogin,
+        requirePasswordChange
       }
     }
   });
@@ -171,7 +193,12 @@ const login = catchAsync(async (req, res, next) => {
 // @route   POST /api/auth/refresh
 // @access  Public
 const refreshToken = catchAsync(async (req, res, next) => {
-  const { refreshToken } = req.body;
+  let refreshToken = req.body.refreshToken;
+  
+  // Check for refresh token in cookies if not in body
+  if (!refreshToken && req.cookies && req.cookies.refreshToken) {
+    refreshToken = req.cookies.refreshToken;
+  }
 
   if (!refreshToken) {
     return next(new AppError('Refresh token is required', 400));
@@ -196,10 +223,20 @@ const refreshToken = catchAsync(async (req, res, next) => {
     const tokenExists = user.refreshTokens.some(token => token.token === refreshToken);
     
     if (!tokenExists) {
-      return next(new AppError('Invalid refresh token', 401));
+      // Potential token theft - invalidate all refresh tokens
+      user.invalidateAllRefreshTokens();
+      await user.save({ validateBeforeSave: false });
+      
+      logger.warn('Potential token theft detected - all refresh tokens invalidated', {
+        userId: user._id,
+        email: user.email,
+        ip: req.ip
+      });
+      
+      return next(new AppError('Invalid refresh token - security breach detected', 401));
     }
 
-    // Generate new tokens
+    // Generate new tokens (rotation)
     const newToken = user.generateAuthToken();
     const newRefreshToken = user.generateRefreshToken();
 
@@ -208,12 +245,35 @@ const refreshToken = catchAsync(async (req, res, next) => {
 
     await user.save({ validateBeforeSave: false });
 
+    // Set new secure cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: config.isProduction,
+      sameSite: config.isProduction ? 'strict' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    };
+
+    const refreshCookieOptions = {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    };
+
+    res.cookie('accessToken', newToken, cookieOptions);
+    res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
+
+    logger.info('Token refreshed successfully', {
+      userId: user._id,
+      email: user.email,
+      ip: req.ip
+    });
+
     res.status(200).json({
       success: true,
       message: 'Token refreshed successfully',
       data: {
-        token: newToken,
-        refreshToken: newRefreshToken
+        // Only send tokens in response for development/mobile
+        token: config.isDevelopment ? newToken : undefined,
+        refreshToken: config.isDevelopment ? newRefreshToken : undefined
       }
     });
 
@@ -226,7 +286,12 @@ const refreshToken = catchAsync(async (req, res, next) => {
 // @route   POST /api/auth/logout
 // @access  Private
 const logout = catchAsync(async (req, res, next) => {
-  const { refreshToken } = req.body;
+  let refreshToken = req.body.refreshToken;
+  
+  // Check for refresh token in cookies if not in body
+  if (!refreshToken && req.cookies && req.cookies.refreshToken) {
+    refreshToken = req.cookies.refreshToken;
+  }
 
   if (refreshToken) {
     // Remove specific refresh token
@@ -237,6 +302,16 @@ const logout = catchAsync(async (req, res, next) => {
   }
 
   await req.user.save({ validateBeforeSave: false });
+
+  // Clear secure cookies
+  const cookieOptions = {
+    httpOnly: true,
+    secure: config.isProduction,
+    sameSite: config.isProduction ? 'strict' : 'lax',
+  };
+
+  res.clearCookie('accessToken', cookieOptions);
+  res.clearCookie('refreshToken', cookieOptions);
 
   logger.info('User logged out', {
     userId: req.user._id,
@@ -330,13 +405,21 @@ const changePassword = catchAsync(async (req, res, next) => {
   }
 
   // Get user with password
-  const user = await User.findById(req.user.id).select('+password');
+  const user = await User.findById(req.user.id).select('+password +passwordHistory');
 
-  // Check current password
-  const isCurrentPasswordCorrect = await user.correctPassword(currentPassword, user.password);
-  
-  if (!isCurrentPasswordCorrect) {
-    return next(new AppError('Current password is incorrect', 401));
+  // Check current password (unless it's a temporary password change)
+  if (!user.isTemporaryPassword && !user.mustChangePassword) {
+    const isCurrentPasswordCorrect = await user.correctPassword(currentPassword, user.password);
+    
+    if (!isCurrentPasswordCorrect) {
+      return next(new AppError('Current password is incorrect', 401));
+    }
+  }
+
+  // Check if new password was used recently
+  const isPasswordReused = await user.isPasswordReused(newPassword);
+  if (isPasswordReused) {
+    return next(new AppError('You cannot reuse a recent password. Please choose a different password.', 400));
   }
 
   // Update password
@@ -350,12 +433,63 @@ const changePassword = catchAsync(async (req, res, next) => {
 
   logger.info('User password changed', {
     userId: user._id,
-    email: user.email
+    email: user.email,
+    wasTemporary: user.isTemporaryPassword || user.mustChangePassword
   });
 
   res.status(200).json({
     success: true,
     message: 'Password changed successfully. Please log in again.'
+  });
+});
+
+// @desc    First login password change (for temporary passwords)
+// @route   PUT /api/auth/first-login-password-change
+// @access  Private
+const firstLoginPasswordChange = catchAsync(async (req, res, next) => {
+  const { newPassword, newPasswordConfirm } = req.body;
+
+  if (!newPassword || !newPasswordConfirm) {
+    return next(new AppError('Please provide new password and confirm password', 400));
+  }
+
+  if (newPassword !== newPasswordConfirm) {
+    return next(new AppError('New password and confirm password do not match', 400));
+  }
+
+  // Get user with password
+  const user = await User.findById(req.user.id).select('+password +passwordHistory +isTemporaryPassword +mustChangePassword');
+
+  // Verify this is indeed a first login scenario
+  if (!user.isTemporaryPassword && !user.mustChangePassword) {
+    return next(new AppError('Password change not required for this account', 400));
+  }
+
+  // Check if new password was used recently
+  const isPasswordReused = await user.isPasswordReused(newPassword);
+  if (isPasswordReused) {
+    return next(new AppError('You cannot reuse a recent password. Please choose a different password.', 400));
+  }
+
+  // Update password and clear temporary flags
+  user.password = newPassword;
+  user.passwordConfirm = newPasswordConfirm;
+  user.isTemporaryPassword = false;
+  user.mustChangePassword = false;
+  
+  // Invalidate all refresh tokens
+  user.invalidateAllRefreshTokens();
+  
+  await user.save();
+
+  logger.info('First login password changed', {
+    userId: user._id,
+    email: user.email
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Password updated successfully. Please log in with your new password.'
   });
 });
 
@@ -468,6 +602,7 @@ module.exports = {
   getMe,
   updateProfile,
   changePassword,
+  firstLoginPasswordChange,
   verifyToken,
   verifyTokenEndpoint
 };
