@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Zap, Calendar, MapPin, Settings } from 'lucide-react';
+import { Plus, Search, Zap, Calendar, MapPin, Settings, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { dbApi } from '../services/api';
 import { ElectricalEquipment } from '../types';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ const ElectricalEquipmentManagementSimple = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Form state for new electrical equipment
@@ -59,7 +60,16 @@ const ElectricalEquipmentManagementSimple = () => {
       if (response.success && response.data) {
         // The response.data should contain { documents: ElectricalEquipment[], pagination: {...} }
         const data = response.data as any;
-        setEquipment(data.documents || []);
+        const documents = data.documents || [];
+        
+        // Transform data to ensure we have consistent ID fields
+        const transformedDocuments = documents.map((item: any, index: number) => ({
+          ...item,
+          id: item._id || item.id || item.equipmentId || `electrical-${index}`, // Ensure we have an id field
+        }));
+        
+        console.log('Transformed electrical equipment documents:', transformedDocuments);
+        setEquipment(transformedDocuments);
       } else {
         setEquipment([]);
       }
@@ -241,6 +251,70 @@ const ElectricalEquipmentManagementSimple = () => {
       case 'Under Maintenance': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleCardClick = (itemId: string) => {
+    console.log('⚡ Card clicked for electrical equipment ID:', itemId);
+    console.log('⚡ Current expandedCardId:', expandedCardId);
+    const newExpandedId = expandedCardId === itemId ? null : itemId;
+    console.log('⚡ Setting expandedCardId to:', newExpandedId);
+    setExpandedCardId(newExpandedId);
+  };
+
+  const getUniqueId = (item: ElectricalEquipment, index: number) => {
+    return item.id || item.equipmentId || `electrical-equipment-${index}`;
+  };
+
+  const renderDetailedView = (item: ElectricalEquipment) => {
+    return (
+      <div className="mt-4 pt-4 border-t border-gray-200 space-y-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Equipment Information</h4>
+            <div className="space-y-2">
+              <div><span className="font-medium">Equipment ID:</span> {item.equipmentId || 'N/A'}</div>
+              <div><span className="font-medium">Equipment Name:</span> {item.equipmentName || 'N/A'}</div>
+              <div><span className="font-medium">Category:</span> {item.category || 'N/A'}</div>
+              <div><span className="font-medium">Make & Model:</span> {item.makeModel || 'N/A'}</div>
+              <div><span className="font-medium">Serial Number:</span> {item.serialNumber || 'N/A'}</div>
+              <div><span className="font-medium">Status:</span> {item.status || 'N/A'}</div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Technical Specifications</h4>
+            <div className="space-y-2">
+              <div><span className="font-medium">Power Capacity:</span> {item.powerCapacityKVA ? `${item.powerCapacityKVA} KVA` : 'N/A'}</div>
+              <div><span className="font-medium">Phase Type:</span> {item.phaseType || 'N/A'}</div>
+              <div><span className="font-medium">Voltage Rating:</span> {item.voltageRating || 'N/A'}</div>
+              <div><span className="font-medium">Current Rating:</span> {item.currentRating || 'N/A'}</div>
+              <div><span className="font-medium">Frequency:</span> {item.frequency || 'N/A'}</div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Location & Installation</h4>
+            <div className="space-y-2">
+              <div><span className="font-medium">Location ID:</span> {item.locationId || 'N/A'}</div>
+              <div><span className="font-medium">Location Type:</span> {item.locationType || 'N/A'}</div>
+              <div><span className="font-medium">Installation Date:</span> {item.installationDate ? new Date(item.installationDate).toLocaleDateString() : 'N/A'}</div>
+              <div><span className="font-medium">Ownership Status:</span> {item.ownershipStatus || 'N/A'}</div>
+              <div><span className="font-medium">Installed By:</span> {item.installedBy || 'N/A'}</div>
+              <div><span className="font-medium">Usage Purpose:</span> {item.usagePurpose || 'N/A'}</div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Maintenance Information</h4>
+            <div className="space-y-2">
+              <div><span className="font-medium">Warranty Valid Till:</span> {item.warrantyValidTill ? new Date(item.warrantyValidTill).toLocaleDateString() : 'N/A'}</div>
+              <div><span className="font-medium">AMC Contract Status:</span> {item.amcContractStatus || 'N/A'}</div>
+              <div><span className="font-medium">Last Service Date:</span> {item.lastServiceDate ? new Date(item.lastServiceDate).toLocaleDateString() : 'N/A'}</div>
+              <div><span className="font-medium">Next Maintenance Due:</span> {item.nextMaintenanceDue ? new Date(item.nextMaintenanceDue).toLocaleDateString() : 'N/A'}</div>
+              <div><span className="font-medium">Created:</span> {item.createdAt ? new Date(item.createdAt).toLocaleString() : 'N/A'}</div>
+              <div><span className="font-medium">Last Updated:</span> {item.updatedAt ? new Date(item.updatedAt).toLocaleString() : 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -552,68 +626,95 @@ const ElectricalEquipmentManagementSimple = () => {
 
       {/* Equipment List */}
       <div className="grid gap-4">
-        {filteredEquipment.map((item) => (
-          <Card key={item.id}>
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-blue-600" />
-                    {item.equipmentName || 'Unknown Equipment'}
-                  </CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">ID: {item.equipmentId}</p>
-                </div>
-                <Badge className={getStatusColor(item.status || 'Unknown')}>
-                  {item.status || 'Unknown'}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="font-medium text-gray-600">Category</p>
-                  <p>{item.category || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-600">Make & Model</p>
-                  <p>{item.makeModel || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-600">Power Capacity</p>
-                  <p>{item.powerCapacityKVA ? `${item.powerCapacityKVA} kVA` : 'N/A'}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4 text-gray-400" />
+        {filteredEquipment.map((item, index) => {
+          const uniqueId = getUniqueId(item, index);
+          const isExpanded = expandedCardId === uniqueId;
+          return (
+            <Card key={uniqueId} className="transition-all duration-200">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-medium text-gray-600">Location</p>
-                    <p>{item.locationId || 'N/A'}</p>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <div>{item.equipmentName || 'Unknown Equipment'}</div>
+                        <p className="text-sm text-gray-500 font-normal">ID: {item.equipmentId}</p>
+                      </div>
+                    </CardTitle>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(item.status || 'Unknown')}>
+                      {item.status || 'Unknown'}
+                    </Badge>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCardClick(uniqueId);
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      title={isExpanded ? "Hide details" : "Show details"}
+                      type="button"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-gray-600" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-600" />
+                      )}
+                    </button>
                   </div>
                 </div>
-              </div>
-              
-              {(item.nextMaintenanceDue || item.warrantyValidTill) && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex items-center gap-4 text-sm">
-                    {item.nextMaintenanceDue && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4 text-orange-500" />
-                        <span className="text-gray-600">Next Maintenance:</span>
-                        <span>{new Date(item.nextMaintenanceDue).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                    {item.warrantyValidTill && (
-                      <div className="flex items-center gap-1">
-                        <Settings className="h-4 w-4 text-blue-500" />
-                        <span className="text-gray-600">Warranty Till:</span>
-                        <span>{new Date(item.warrantyValidTill).toLocaleDateString()}</span>
-                      </div>
-                    )}
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="font-medium text-gray-600">Category</p>
+                    <p>{item.category || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600">Make & Model</p>
+                    <p>{item.makeModel || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600">Power Capacity</p>
+                    <p>{item.powerCapacityKVA ? `${item.powerCapacityKVA} kVA` : 'N/A'}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="font-medium text-gray-600">Location</p>
+                      <p>{item.locationId || 'N/A'}</p>
+                    </div>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                
+                {(item.nextMaintenanceDue || item.warrantyValidTill) && (
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex items-center gap-4 text-sm">
+                      {item.nextMaintenanceDue && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-orange-500" />
+                          <span className="text-gray-600">Next Maintenance:</span>
+                          <span>{new Date(item.nextMaintenanceDue).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      {item.warrantyValidTill && (
+                        <div className="flex items-center gap-1">
+                          <Settings className="h-4 w-4 text-blue-500" />
+                          <span className="text-gray-600">Warranty Till:</span>
+                          <span>{new Date(item.warrantyValidTill).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expandable Details Section */}
+                {isExpanded && renderDetailedView(item)}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {filteredEquipment.length === 0 && (

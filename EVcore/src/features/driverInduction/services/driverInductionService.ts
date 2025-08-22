@@ -6,6 +6,13 @@ export interface DriverInductionResponse {
   success: boolean;
   pilotId?: string;
   message: string;
+  userCreated?: boolean;
+  credentials?: {
+    email?: string;
+    temporaryPassword?: string;
+    requirePasswordChange?: boolean;
+    note?: string;
+  };
 }
 
 export const driverInductionService = {
@@ -23,27 +30,21 @@ export const driverInductionService = {
         };
       }
 
-      // Use the new API service for production, fallback for development
-      if (config.IS_DEVELOPMENT) {
-        // Development fallback - create a mock response
-        const mockPilotId = `DEV_PILOT_${Date.now()}`;
-        return {
-          success: true,
-          pilotId: mockPilotId,
-          message: `[DEV] Pilot inducted successfully with ID: ${mockPilotId}`
-        };
-      }
-
-      // Production - use the new API service
+      // Use the new backend API endpoint that creates both pilot profile and user account
+      console.log('🚀 Submitting driver induction to backend API...');
       const response = await driverInductionApi.submitInduction(inductionData);
       
       if (response.success && response.data) {
+        console.log('✅ Driver induction successful:', response.data);
         return {
           success: true,
-          pilotId: response.data.pilotId,
-          message: `Pilot inducted successfully with ID: ${response.data.pilotId}`
+          pilotId: response.data.pilot.pilotId,
+          message: response.message,
+          userCreated: true,
+          credentials: response.data.credentials
         };
       } else {
+        console.error('❌ Driver induction failed:', response.message);
         return {
           success: false,
           message: response.message || 'Failed to submit driver induction'

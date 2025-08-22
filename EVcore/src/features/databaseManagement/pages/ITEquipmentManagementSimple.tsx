@@ -57,7 +57,16 @@ const ITEquipmentManagementSimple = () => {
       if (response.success && response.data) {
         // The response.data should contain { documents: ITEquipment[], pagination: {...} }
         const data = response.data as any;
-        setEquipment(data.documents || []);
+        const documents = data.documents || [];
+        
+        // Transform data to ensure we have consistent ID fields
+        const transformedDocuments = documents.map((item: any, index: number) => ({
+          ...item,
+          id: item._id || item.id || item.assetId || `it-${index}`, // Ensure we have an id field
+        }));
+        
+        console.log('Transformed documents:', transformedDocuments);
+        setEquipment(transformedDocuments);
       } else {
         setEquipment([]);
       }
@@ -258,7 +267,14 @@ const ITEquipmentManagementSimple = () => {
 
   const handleCardClick = (itemId: string) => {
     console.log('💻 Card clicked for IT equipment ID:', itemId);
-    setExpandedCardId(expandedCardId === itemId ? null : itemId);
+    console.log('💻 Current expandedCardId:', expandedCardId);
+    const newExpandedId = expandedCardId === itemId ? null : itemId;
+    console.log('💻 Setting expandedCardId to:', newExpandedId);
+    setExpandedCardId(newExpandedId);
+  };
+
+  const getUniqueId = (item: ITEquipment, index: number) => {
+    return item.id || item.assetId || `it-equipment-${index}`;
   };
 
   const renderDetailedView = (item: ITEquipment) => {
@@ -571,9 +587,10 @@ const ITEquipmentManagementSimple = () => {
       {/* Equipment List */}
       <div className="grid gap-4">
         {filteredEquipment.map((item, index) => {
-          const isExpanded = expandedCardId === (item.id || item.assetId);
+          const uniqueId = getUniqueId(item, index);
+          const isExpanded = expandedCardId === uniqueId;
           return (
-            <Card key={item.id || item.assetId || `it-equipment-${index}`} className="transition-all duration-200">
+            <Card key={uniqueId} className="transition-all duration-200">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div>
@@ -590,9 +607,14 @@ const ITEquipmentManagementSimple = () => {
                       {item.assetStatus || 'Unknown'}
                     </Badge>
                     <button
-                      onClick={() => handleCardClick(item.id || item.assetId || `it-equipment-${index}`)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCardClick(uniqueId);
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                       title={isExpanded ? "Hide details" : "Show details"}
+                      type="button"
                     >
                       {isExpanded ? (
                         <ChevronUp className="w-4 h-4 text-gray-600" />

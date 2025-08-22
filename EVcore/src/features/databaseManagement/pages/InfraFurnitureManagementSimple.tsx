@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Building2, Calendar, MapPin, Package2, Home } from 'lucide-react';
+import { Plus, Search, Building2, Calendar, MapPin, Package2, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import { dbApi } from '../services/api';
 import { InfraFurniture } from '../types';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ const InfraFurnitureManagementSimple = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Form state for new infrastructure & furniture
@@ -342,6 +343,102 @@ const InfraFurnitureManagementSimple = () => {
     }
   };
 
+  const handleCardClick = (itemId: string) => {
+    console.log('🏢 Card clicked for Infrastructure/Furniture ID:', itemId);
+    setExpandedCardId(expandedCardId === itemId ? null : itemId);
+  };
+
+  const renderDetailedView = (item: InfraFurniture) => {
+    return (
+      <div className="mt-4 pt-4 border-t border-gray-200 space-y-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Asset Information</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Asset ID:</span>
+                <span className="font-medium">{item.assetId || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Make/Model:</span>
+                <span className="font-medium">{item.makeModel || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Material:</span>
+                <span className="font-medium">{item.materialType || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Color:</span>
+                <span className="font-medium">{item.color || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Quantity:</span>
+                <span className="font-medium">{item.quantity || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Purchase & Vendor</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Purchase Date:</span>
+                <span className="font-medium">{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Vendor:</span>
+                <span className="font-medium">{item.vendorName || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Ownership:</span>
+                <span className="font-medium">{item.ownershipType || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Location & Maintenance</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Location:</span>
+                <span className="font-medium">{item.locationId || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Room/Area:</span>
+                <span className="font-medium">{item.roomAreaDescription || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Last Inspection:</span>
+                <span className="font-medium">{item.lastInspectionDate ? new Date(item.lastInspectionDate).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Next Maintenance:</span>
+                <span className="font-medium">{item.nextMaintenanceDue ? new Date(item.nextMaintenanceDue).toLocaleDateString() : 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Status & Contract</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Asset Status:</span>
+                <span className="font-medium">{item.assetStatus || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Condition:</span>
+                <span className="font-medium">{item.condition || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">AMC Status:</span>
+                <span className="font-medium">{item.amcContractStatus || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -603,114 +700,74 @@ const InfraFurnitureManagementSimple = () => {
 
       {/* Furniture List */}
       <div className="grid gap-4">
-        {filteredFurniture.map((item, index) => (
-          <Card key={item.id || item.assetId || `furniture-${index}`}>
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="text-2xl">{getAssetTypeIcon(item.assetType || 'Other')}</span>
+        {filteredFurniture.map((item, index) => {
+          const isExpanded = expandedCardId === (item as any)._id;
+          return (
+            <Card key={(item as any)._id || item.assetId || `furniture-${index}`} className="transition-all duration-200">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <span className="text-2xl">{getAssetTypeIcon(item.assetType || 'Other')}</span>
+                      <div>
+                        <div>{item.assetType || 'Unknown Type'}</div>
+                        <p className="text-sm text-gray-500 font-normal">ID: {item.assetId}</p>
+                      </div>
+                    </CardTitle>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(item.assetStatus || 'Unknown')}>
+                      {item.assetStatus || 'Unknown'}
+                    </Badge>
+                    <Badge className={getConditionColor(item.condition || 'Unknown')}>
+                      {item.condition || 'Unknown'}
+                    </Badge>
+                    <button
+                      onClick={() => handleCardClick((item as any)._id!)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      title={isExpanded ? "Hide details" : "Show details"}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-gray-600" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="font-medium text-gray-600">Make/Model</p>
+                    <p>{item.makeModel || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600">Material</p>
+                    <p>{item.materialType || 'N/A'}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Package2 className="h-4 w-4 text-gray-400" />
                     <div>
-                      <div>{item.assetType || 'Unknown Type'}</div>
-                      <p className="text-sm text-gray-500 font-normal">ID: {item.assetId}</p>
+                      <p className="font-medium text-gray-600">Quantity</p>
+                      <p>{item.quantity || 1} unit(s)</p>
                     </div>
-                  </CardTitle>
-                </div>
-                <div className="flex gap-2">
-                  <Badge className={getStatusColor(item.assetStatus || 'Unknown')}>
-                    {item.assetStatus || 'Unknown'}
-                  </Badge>
-                  <Badge className={getConditionColor(item.condition || 'Unknown')}>
-                    {item.condition || 'Unknown'}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="font-medium text-gray-600">Make/Model</p>
-                  <p>{item.makeModel || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-600">Material</p>
-                  <p>{item.materialType || 'N/A'}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Package2 className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="font-medium text-gray-600">Quantity</p>
-                    <p>{item.quantity || 1} unit(s)</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="font-medium text-gray-600">Location</p>
+                      <p>{item.locationId || 'N/A'}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="font-medium text-gray-600">Location</p>
-                    <p>{item.locationId || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-              
-              {(item.roomAreaDescription || item.color) && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    {item.roomAreaDescription && (
-                      <div className="flex items-center gap-1">
-                        <Home className="h-4 w-4 text-blue-500" />
-                        <span className="text-gray-600">Room/Area:</span>
-                        <span>{item.roomAreaDescription}</span>
-                      </div>
-                    )}
-                    {item.color && (
-                      <div className="flex items-center gap-1">
-                        <div className="h-4 w-4 rounded-full border border-gray-300" style={{backgroundColor: item.color.toLowerCase()}}></div>
-                        <span className="text-gray-600">Color:</span>
-                        <span>{item.color}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {(item.lastInspectionDate || item.nextMaintenanceDue || item.ownershipType) && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    {item.lastInspectionDate && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4 text-green-500" />
-                        <span className="text-gray-600">Last Inspection:</span>
-                        <span>{new Date(item.lastInspectionDate).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                    {item.nextMaintenanceDue && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4 text-orange-500" />
-                        <span className="text-gray-600">Next Maintenance:</span>
-                        <span>{new Date(item.nextMaintenanceDue).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                    {item.ownershipType && (
-                      <div className="flex items-center gap-1">
-                        <Building2 className="h-4 w-4 text-purple-500" />
-                        <span className="text-gray-600">Ownership:</span>
-                        <span>{item.ownershipType}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {item.amcContractStatus && item.amcContractStatus !== 'NA' && (
-                    <div className="mt-2">
-                      <Badge variant="outline" className={`${item.amcContractStatus === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                        AMC: {item.amcContractStatus}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                {/* Expandable Details Section */}
+                {isExpanded && renderDetailedView(item)}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {filteredFurniture.length === 0 && (
