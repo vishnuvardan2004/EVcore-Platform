@@ -195,7 +195,7 @@ export interface AuditLogsResponse {
 }
 
 export class DatabaseManagementService extends APIService {
-  private basePath = '/api/database';
+  private basePath = '/api/database-mgmt';
 
   // HTTP helper methods
   protected async get<T>(endpoint: string): Promise<{ data: T }> {

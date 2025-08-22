@@ -1,10 +1,10 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 // EVCORE Platform - Main Application Entry Point
-import Dashboard from './pages/Dashboard';
-import Database from './pages/Database';
+import Dashboard from './features/dashboard/pages/Dashboard';
+import Database from './features/databaseManagement/pages/Database';
 import VehicleTracker from './features/vehicleDeployment/pages/VehicleTracker';
-import VehicleDamagesPage from './pages/VehicleDamages';
+import VehicleDamagesPage from './features/vehicleDeployment/pages/VehicleDamages';
 import RideHistory from './features/vehicleDeployment/pages/RideHistory';
 import LiveStatus from './features/vehicleDeployment/pages/LiveStatus';
 import Alerts from './features/vehicleDeployment/pages/Alerts';
@@ -15,9 +15,8 @@ import { TripDetails } from './features/driverTripDetails';
 import { OfflineBookings } from './features/offlineBookings';
 import { 
   DatabaseLayout,
-  DatabaseDashboard,
+  DatabaseManagementDashboard,
   PilotManagement, 
-  CustomerManagement, 
   EmployeeManagement,
   DataAnalytics,
   ModuleManagementPage,
@@ -25,32 +24,58 @@ import {
   DocumentForm,
   ImportExportPage
 } from './features/databaseManagement';
-import VehicleManagementSimple from './features/databaseManagement/components/VehicleManagementSimple';
-import ChargingEquipmentManagementSimple from './features/databaseManagement/components/ChargingEquipmentManagementSimple';
-import ElectricalEquipmentManagementSimple from './features/databaseManagement/components/ElectricalEquipmentManagementSimple';
-import ITEquipmentManagementSimple from './features/databaseManagement/components/ITEquipmentManagementSimple';
-import InfraFurnitureManagementSimple from './features/databaseManagement/components/InfraFurnitureManagementSimple';
+import VehicleManagementSimple from './features/databaseManagement/pages/VehicleManagementSimple';
+import ChargingEquipmentManagementSimple from './features/databaseManagement/pages/ChargingEquipmentManagementSimple';
+import ElectricalEquipmentManagementSimple from './features/databaseManagement/pages/ElectricalEquipmentManagementSimple';
+import ITEquipmentManagementSimple from './features/databaseManagement/pages/ITEquipmentManagementSimple';
+import InfraFurnitureManagementSimple from './features/databaseManagement/pages/InfraFurnitureManagementSimple';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
+import Login from './features/auth/pages/Login';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { NavigationSidebar } from './components/NavigationSidebar';
-import { MainLayout } from './components/MainLayout';
-import SmartWidgetsDashboard from './pages/SmartWidgetsDashboard';
-import GlobalReports from './pages/GlobalReports';
-import AdminModuleToggle from './pages/AdminModuleToggle';
-import LanguageSelector from './pages/LanguageSelector';
-import AuditLogs from './pages/AuditLogs';
+import { NavigationSidebar } from './features/shared/components/navigation/NavigationSidebar';
+import { MainLayout } from './features/shared/components/layout/MainLayout';
+import SmartWidgetsDashboard from './features/dashboard/pages/SmartWidgetsDashboard';
+import GlobalReports from './features/reports/pages/GlobalReports';
+import LanguageSelector from './features/admin/pages/LanguageSelector';
+import AuditLogs from './features/admin/pages/AuditLogs';
 
 const AppContent = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  // Debug logging for App.tsx routing decisions
+  console.log('🚦 App.tsx State:', { 
+    isAuthenticated, 
+    isLoading, 
+    user: user ? { email: user.email, role: user.role } : null 
+  });
+  console.log('🔐 isAuthenticated type and value:', typeof isAuthenticated, isAuthenticated);
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    console.log('⏳ Showing loading spinner');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Validating authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
-    return <Login />;
+    console.log('🔒 User not authenticated, showing login');
+    return (
+      <Routes>
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
   }
 
   // Show main application if authenticated
+  console.log('✅ User authenticated, showing main app');
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
@@ -60,7 +85,6 @@ const AppContent = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="/smart-widgets" element={<SmartWidgetsDashboard />} />
             <Route path="/global-reports" element={<GlobalReports />} />
-            <Route path="/admin-toggle" element={<AdminModuleToggle />} />
             <Route path="/language" element={<LanguageSelector />} />
             <Route path="/audit-logs" element={<AuditLogs />} />
             <Route path="/vehicle-tracker" element={<VehicleTracker />} />
@@ -86,7 +110,7 @@ const AppContent = () => {
             
             {/* Legacy Database Management Routes with Sidebar Layout */}
             <Route path="/database/*" element={<DatabaseLayout />}>
-              <Route index element={<DatabaseDashboard />} />
+              <Route index element={<DatabaseManagementDashboard />} />
               <Route path="vehicles" element={<VehicleManagementSimple />} />
               <Route path="charging-equipment" element={<ChargingEquipmentManagementSimple />} />
               <Route path="electrical-equipment" element={<ElectricalEquipmentManagementSimple />} />
@@ -94,9 +118,11 @@ const AppContent = () => {
               <Route path="infra-furniture" element={<InfraFurnitureManagementSimple />} />
               <Route path="employees" element={<EmployeeManagement />} />
               <Route path="pilots" element={<PilotManagement />} />
-              <Route path="customers" element={<CustomerManagement />} />
               <Route path="analytics" element={<DataAnalytics />} />
             </Route>
+            
+            {/* Catch-all route - redirect any unknown path to dashboard */}
+            <Route path="*" element={<Dashboard />} />
           </Routes>
         </MainLayout>
       </div>

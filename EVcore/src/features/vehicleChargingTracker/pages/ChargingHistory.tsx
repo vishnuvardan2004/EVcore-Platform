@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ChargingTrackerLayout } from '../components/ChargingTrackerLayout';
-import { PageLayout } from '../../../components/PageLayout';
+import { PageLayout } from '../../shared/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

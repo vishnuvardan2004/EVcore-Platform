@@ -1,9 +1,9 @@
 
 import React, { useEffect } from 'react';
-import { PageLayout } from '../components/PageLayout';
+import { PageLayout } from '../features/shared/components/layout/PageLayout';
 import { VehicleDeploymentForm } from '../features/vehicleDeployment/components/VehicleDeploymentForm';
-import { DashboardLayout } from '../components/DashboardLayout';
-import { AppFooter } from '../components/AppFooter';
+import { DashboardLayout } from '../features/shared/components/layout/DashboardLayout';
+import { AppFooter } from '../features/shared/components/layout/AppFooter';
 
 const Index = () => {
   useEffect(() => {

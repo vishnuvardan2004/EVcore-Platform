@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { PageLayout } from '../../../components/PageLayout';
+import { PageLayout } from '../../shared/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

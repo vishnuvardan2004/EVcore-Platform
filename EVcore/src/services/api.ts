@@ -22,7 +22,71 @@ export class APIService {
   }
 
   private getAuthToken(): string | null {
-    return localStorage.getItem('authToken');
+    // Get token from localStorage using the correct key
+    const token = localStorage.getItem('authToken'); // Using direct key to avoid any config issues
+    
+    console.log('🔑 Getting auth token from localStorage["authToken"]:', token ? `${token.substring(0, 20)}...` : 'No token found');
+    
+    if (!token) {
+      console.warn('⚠️ No token found in localStorage');
+      return null;
+    }
+    
+    // Validate JWT format (should have 3 parts separated by dots)
+    const jwtParts = token.split('.');
+    if (jwtParts.length !== 3) {
+      console.error('❌ Invalid JWT format - expected 3 parts, got:', jwtParts.length);
+      console.error('Token preview:', token.substring(0, 50) + '...');
+      console.error('Clearing invalid token from localStorage');
+      // Clear invalid token
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      return null;
+    }
+    
+    console.log('✅ JWT format valid - 3 parts found');
+    return token;
+  }
+
+  private async handleTokenRefresh(): Promise<void> {
+    if (this.isRefreshing) {
+      return this.refreshPromise!;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseURL}/api/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include', // Include httpOnly cookies
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          // In development, token might be returned in response
+          if (result.data?.token) {
+            localStorage.setItem(config.TOKEN_STORAGE_KEY, result.data.token);
+          }
+        } else {
+          // Refresh failed, redirect to login
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+          throw new Error('Refresh token expired');
+        }
+      } catch (error) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+        throw error;
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
   public async request<T>(
@@ -32,21 +96,76 @@ export class APIService {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getAuthToken();
     
+    console.log('🌐 API Request Details:', { 
+      url, 
+      method: options.method || 'GET',
+      endpoint,
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token found'
+    });
+
+    // Check if this is a protected route that requires authentication
+    const isPublicRoute = endpoint.includes('/login') || 
+                         endpoint.includes('/register') || 
+                         endpoint.includes('/health') ||
+                         endpoint.includes('/public');
+
+    // Validate token for protected routes
+    if (!token && !isPublicRoute) {
+      console.error('❌ No authentication token found for protected route:', endpoint);
+      console.error('Available localStorage keys:', Object.keys(localStorage));
+      console.error('authToken value:', localStorage.getItem('authToken'));
+      console.error('Redirecting to login...');
+      
+      // Clear any existing auth state
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      
+      // Redirect to login page
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      
+      throw new Error('Authentication required - no token found');
+    }
+    
+    // Build request config
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
-      credentials: 'include', // Important for CORS with credentials
+      credentials: 'include', // Important for CORS with credentials and httpOnly cookies
       ...options,
     };
 
+    // Add Authorization header only if token exists
+    if (token) {
+      (config.headers as any).Authorization = `Bearer ${token}`;
+      console.log('� Added Authorization header: Bearer [token]');
+      console.log('� Token details - Length:', token.length, 'Parts:', token.split('.').length);
+    } else if (!isPublicRoute) {
+      console.error('❌ No token available for protected route');
+    }
+
+    // Log final request details
+    console.log('� Final request headers:', Object.keys(config.headers || {}));
+    console.log('🔍 Authorization header present:', !!(config.headers as any)?.Authorization);
+
     try {
       const response = await fetch(url, config);
+      
       if (response.status === 401) {
-        await this.handle401AndRetry();
+        // Try to refresh token and retry
+        await this.handleTokenRefresh();
+        
+        // Update token in config if it was refreshed to localStorage
+        const newToken = this.getAuthToken();
+        if (newToken && config.headers) {
+          (config.headers as any).Authorization = `Bearer ${newToken}`;
+        }
+        
         const retryResponse = await fetch(url, config);
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json().catch(() => ({}));
@@ -61,12 +180,43 @@ export class APIService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        
+        console.log('❌ API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          url: response.url
+        });
+        
+        // Handle JWT malformed error specifically
+        if (response.status === 401 && (
+          errorData.message?.includes('jwt malformed') || 
+          errorData.message?.includes('invalid token') ||
+          errorData.message?.includes('JsonWebTokenError')
+        )) {
+          console.log('🔥 JWT malformed error detected, clearing token and redirecting...');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          
+          // If we're not already on the login page, redirect
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
+          
+          throw {
+            message: 'Authentication token is invalid. Please log in again.',
+            status: 401,
+            code: 'JWT_MALFORMED',
+          } as APIError;
+        }
+        
         throw {
           message: errorData.message || `HTTP Error: ${response.status}`,
           status: response.status,
           code: errorData.code,
         } as APIError;
       }
+      
       return await response.json();
     } catch (error) {
       if (error instanceof TypeError) {
@@ -134,7 +284,7 @@ export class APIService {
   // Authentication endpoints
   auth = {
     login: (credentials: { email: string; password: string }) =>
-      this.request<{ token: string; user: any }>('/api/auth/login', {
+      this.request<{ token?: string; refreshToken?: string; user: any }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(credentials),
       }),
@@ -145,13 +295,25 @@ export class APIService {
       }),
     
     refreshToken: () =>
-      this.request<{ token: string }>('/api/auth/refresh', {
+      this.request<{ token?: string; refreshToken?: string }>('/api/auth/refresh', {
         method: 'POST',
       }),
     
     verifyToken: () =>
       this.request<{ user: any }>('/api/auth/verify', {
         method: 'GET',
+      }),
+    
+    changePassword: (data: { currentPassword: string; newPassword: string; newPasswordConfirm: string }) =>
+      this.request('/api/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    
+    firstLoginPasswordChange: (data: { newPassword: string; newPasswordConfirm: string }) =>
+      this.request('/api/auth/first-login-password-change', {
+        method: 'PUT',
+        body: JSON.stringify(data),
       }),
   };
 

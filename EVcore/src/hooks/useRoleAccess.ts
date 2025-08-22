@@ -14,61 +14,19 @@ export const useRoleAccess = () => {
     if (!user || !canAccessFeature(featureId)) return false;
     
     // Super admin and admin can do everything
-    if (user.role === 'super-admin' || user.role === 'admin') return true;
+    if (user.role === 'super_admin' || user.role === 'admin') return true;
     
     // Define action permissions by role and feature
     const actionPermissions = {
-      'leadership': {
-        'vehicle-deployment': ['view', 'create', 'edit', 'delete', 'export'],
-        'database-management': ['view', 'create', 'edit', 'delete', 'export'],
-        'driver-induction': ['view', 'create', 'edit', 'delete', 'export'],
-        'trip-details': ['view', 'create', 'edit', 'delete', 'export'],
-        'offline-bookings': ['view', 'create', 'edit', 'delete', 'export'],
-        'charging-tracker': ['view', 'create', 'edit', 'delete', 'export'],
-        'attendance': ['view', 'create', 'edit', 'delete', 'export'],
-        'reports': ['view', 'create', 'edit', 'delete', 'export']
-      },
-      'manager': {
+      'employee': {
         'vehicle-deployment': ['view', 'create', 'edit', 'export'],
         'database-management': ['view', 'edit', 'export'],
         'driver-induction': ['view', 'create', 'edit', 'export'],
-        'trip-details': ['view', 'edit', 'export'],
+        'trip-details': ['view', 'create', 'edit', 'export'],
         'offline-bookings': ['view', 'create', 'edit', 'delete', 'export'],
-        'charging-tracker': ['view', 'edit', 'export'],
+        'charging-tracker': ['view', 'create', 'edit', 'export'],
         'attendance': ['view', 'edit', 'export'],
         'reports': ['view', 'export']
-      },
-      'supervisor': {
-        'vehicle-deployment': ['view', 'create', 'edit', 'export'],
-        'database-management': ['view', 'edit', 'export'],
-        'driver-induction': ['view', 'create', 'edit'],
-        'trip-details': ['view', 'edit', 'export'],
-        'offline-bookings': ['view', 'create', 'edit', 'delete', 'export'],
-        'charging-tracker': ['view', 'edit', 'export'],
-        'attendance': ['view', 'edit', 'export']
-      },
-      'lead': {
-        'vehicle-deployment': ['view', 'create', 'edit'],
-        'driver-induction': ['view', 'create', 'edit'],
-        'trip-details': ['view', 'edit'],
-        'charging-tracker': ['view', 'edit'],
-        'attendance': ['view', 'edit']
-      },
-      'security': {
-        'vehicle-deployment': ['view'],
-        'driver-induction': ['view', 'create'],
-        'attendance': ['view', 'edit'],
-        'reports': ['view']
-      },
-      'hr': {
-        'driver-induction': ['view', 'create', 'edit', 'delete'],
-        'attendance': ['view', 'edit', 'export'],
-        'reports': ['view', 'export']
-      },
-      'finance': {
-        'reports': ['view', 'export'],
-        'database-management': ['view', 'export'],
-        'trip-details': ['view', 'export']
       },
       'pilot': {
         'vehicle-deployment': ['view'],
@@ -86,15 +44,9 @@ export const useRoleAccess = () => {
    */
   const getRoleLevel = (): number => {
     const roleLevels = { 
-      'super-admin': 10,
+      'super_admin': 10,
       'admin': 9,
-      'leadership': 8,
-      'manager': 7,
-      'supervisor': 6,
-      'lead': 5,
-      'security': 4,
-      'hr': 4,
-      'finance': 4,
+      'employee': 5,
       'pilot': 3
     };
     return roleLevels[user?.role || 'pilot'] || 0;
@@ -105,15 +57,9 @@ export const useRoleAccess = () => {
    */
   const hasMinimumRole = (requiredRole: string): boolean => {
     const roleLevels = { 
-      'super-admin': 10,
+      'super_admin': 10,
       'admin': 9,
-      'leadership': 8,
-      'manager': 7,
-      'supervisor': 6,
-      'lead': 5,
-      'security': 4,
-      'hr': 4,
-      'finance': 4,
+      'employee': 5,
       'pilot': 3
     };
     const userLevel = getRoleLevel();
@@ -139,14 +85,14 @@ export const useRoleAccess = () => {
    * Check if user is super admin (can access admin settings)
    */
   const isSuperAdmin = (): boolean => {
-    return hasRole('super-admin');
+    return hasRole('super_admin');
   };
 
   /**
    * Check if user is admin level or higher
    */
   const isAdmin = (): boolean => {
-    return hasRole('super-admin') || hasRole('admin');
+    return hasRole('super_admin') || hasRole('admin');
   };
 
   /**

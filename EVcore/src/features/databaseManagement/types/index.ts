@@ -39,19 +39,47 @@ export interface AssignmentInfo {
   department?: string;
 }
 
-// Vehicle Management Types - Updated to match backend
+// Vehicle Management Types - Updated to match exact schema requirements
 export interface Vehicle extends DatabaseDocument {
-  vehicleId: string;
-  make: string;
-  model: string;
-  year: number;
-  licensePlate: string;
-  batteryCapacity: number;
-  currentBatteryLevel?: number;
-  range: number;
-  status: 'available' | 'in_use' | 'charging' | 'maintenance';
-  location?: LocationInfo;
-  assignedPilot?: string;
+  // Primary Vehicle Information
+  Vehicle_ID: string;              // Internal vehicle ID (PK)
+  VIN_Number: string;              // Chassis ID
+  Engine_Number: string;           // Engine serial number
+  Registration_Number: string;     // Number plate
+  Registration_Date: string;       // RTO registration date
+  Brand: string;                   // Manufacturer
+  Model: string;                   // Vehicle model name
+  Vehicle_Class: 'Hatchback' | 'Sedan' | 'Scooter' | 'SUV' | 'Truck' | 'Van'; // Vehicle class enum
+  Vehicle_Type: 'E4W' | 'E2W' | 'Shuttle'; // Vehicle type enum
+  Fuel_Type: 'Electric' | 'Hybrid' | 'NA'; // Fuel type enum
+  
+  // Battery & Technical Details
+  Battery_Serial_Number: string;   // Unique battery ID
+  No_of_Tyres: number;            // e.g., 4 or 2
+  Tyre_Serial_Numbers: string;    // Optional for tracking (JSON format)
+  Charger_Serial_Number: string;  // Portable charger info
+  Charger_Type: 'Slow' | 'Fast';  // Charger type enum
+  Battery_Capacity_kWh: number;   // Capacity in kWh
+  Charging_Port_Type: string;     // e.g., CCS2
+  
+  // Insurance & Legal Documents
+  Insurance_Provider: string;      // Name of insurer
+  Insurance_Policy_No: string;    // Policy reference
+  Insurance_Expiry_Date: string;  // Expiry date
+  Permit_Number: string;          // Govt. permit
+  Permit_Expiry_Date: string;     // Permit expiry date
+  Police_Certificate_Status: 'Pending' | 'Verified'; // Status enum
+  RC_File: string;                // Registration Certificate file
+  PUC_Status: 'NA' | 'Valid' | 'Expired'; // PUC status enum
+  
+  // Condition & Maintenance
+  Vehicle_Condition: 'New' | 'Good' | 'Retired'; // Condition enum
+  Odometer_Reading: number;       // Current km reading
+  Location_Assigned: string;      // Hub/depot location
+  Assigned_Pilot_ID: string;      // Driver ID
+  Maintenance_Due_Date: string;   // Next service due
+  Last_Service_Date: string;      // Last maintenance
+  Status: 'Active' | 'In Maintenance' | 'Idle'; // Status enum
 }
 
 // Legacy vehicle interface for backward compatibility
@@ -376,15 +404,8 @@ export interface Pilot {
 export type UserRole = 
   | 'super_admin'
   | 'admin'
-  | 'leadership'
-  | 'manager'
-  | 'supervisor'
-  | 'pilot'
-  | 'lead'
-  | 'security'
-  | 'hr'
-  | 'finance'
-  | 'employee';
+  | 'employee'
+  | 'pilot';
 
 export interface Permission {
   id: string;

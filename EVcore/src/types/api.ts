@@ -34,16 +34,10 @@ export interface User {
 }
 
 export type UserRole = 
-  | 'super-admin'
+  | 'super_admin'
   | 'admin'
-  | 'leadership'
-  | 'manager'
-  | 'supervisor'
-  | 'pilot'
-  | 'lead'
-  | 'security'
-  | 'hr'
-  | 'finance';
+  | 'employee'
+  | 'pilot';
 
 export interface LoginRequest {
   email: string;

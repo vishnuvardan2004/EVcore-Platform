@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { VehicleTrackerLayout } from '../components/VehicleTrackerLayout';
 import { Deployment } from '../../../types/vehicle';
 import { RideDetailModal } from '../components/RideDetailModal';
-import { ExportDialog } from '../../../components/ExportDialog';
+import { ExportDialog } from '../components/ExportDialog';
 import { RideHistoryFilters } from '../components/RideHistoryFilters';
 import { RideHistoryTable } from '../components/RideHistoryTable';
 import { useRideHistoryData } from '../hooks/useRideHistoryData';

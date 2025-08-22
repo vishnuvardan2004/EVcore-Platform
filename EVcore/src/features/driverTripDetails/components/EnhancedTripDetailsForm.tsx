@@ -7,7 +7,7 @@ import {
   EnhancedAnalyticsSection,
   StepNavigation
 } from './index';
-import { NetworkStatus } from '../../../components/NetworkStatus';
+import { NetworkStatus } from '../../shared/components/status/NetworkStatus';
 import { Card } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Wifi, WifiOff, Clock, User, Car, BarChart3, CheckCircle } from 'lucide-react';

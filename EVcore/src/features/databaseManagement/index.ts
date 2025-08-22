@@ -1,22 +1,21 @@
 // Database Management Feature - Main Export File
 
-// Legacy Components (maintained for compatibility)
+// Layout Components (reusable components)
 export { DatabaseLayout } from './components/DatabaseLayout';
-export { DatabaseDashboard } from './components/DatabaseDashboard';
-export { EmployeeManagement } from './components/EmployeeManagement';
-export { PilotManagement } from './components/PilotManagement';
-export { CustomerManagement } from './components/CustomerManagement';
-export { DataAnalytics } from './components/DataAnalytics';
 
-// New Comprehensive Database Management Components
-export { default as DatabaseManagementDashboard } from './components/DatabaseManagementDashboard';
-export { default as ModuleManagementPage } from './components/ModuleManagementPage';
-export { default as DocumentDetailView } from './components/DocumentDetailView';
-export { default as DocumentForm } from './components/DocumentForm';
-export { default as ImportExportPage } from './components/ImportExportPage';
+// Page Components (full page views)
+export { EmployeeManagement } from './pages/EmployeeManagement';
+export { PilotManagement } from './pages/PilotManagement';
+export { DataAnalytics } from './pages/DataAnalytics';
+
+// Comprehensive Database Management Pages
+export { default as DatabaseManagementDashboard } from './pages/DatabaseManagementDashboard';
+export { default as ModuleManagementPage } from './pages/ModuleManagementPage';
+export { default as DocumentDetailView } from './pages/DocumentDetailView';
+export { default as DocumentForm } from './pages/DocumentForm';
+export { default as ImportExportPage } from './pages/ImportExportPage';
 
 // Services
-export { databaseService } from './services/databaseSimple';
 export { databaseService as databaseManagementService } from './services/databaseService';
 
 // Types

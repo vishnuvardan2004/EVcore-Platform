@@ -54,18 +54,7 @@ const DatabaseManagementDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
   const { hasAccess } = useRoleAccess();
-  const { handleError: baseHandleError } = useErrorHandler();
-
-  // Enhanced error handler that accepts custom messages
-  const handleError = (error: any, customMessage?: string) => {
-    if (customMessage) {
-      console.error(customMessage, error);
-      // Display custom message but still log the original error
-      baseHandleError(new Error(customMessage));
-    } else {
-      baseHandleError(error);
-    }
-  };
+  const { handleError } = useErrorHandler();
 
   // Check if user has database management access
   const canManageDatabase = hasAccess(['super_admin', 'admin', 'db_manager']);
@@ -112,7 +101,8 @@ const DatabaseManagementDashboard: React.FC = () => {
         }
       }
     } catch (error) {
-      handleError(error, 'Failed to load dashboard data');
+      console.error('Failed to load dashboard data:', error);
+      handleError(error);
     } finally {
       setLoading(false);
     }
@@ -184,7 +174,8 @@ const DatabaseManagementDashboard: React.FC = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      handleError(error, 'Failed to export data');
+      console.error('Failed to export data:', error);
+      handleError(error);
     }
   };
 

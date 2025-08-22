@@ -22,11 +22,16 @@ export const useOfflineSync = () => {
       setPendingSubmissions(JSON.parse(stored));
     }
 
-    // Register service worker
+    // Register service worker with better error handling
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
           console.log('Service Worker registered:', registration);
+          
+          // Handle service worker messages properly
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            console.log('Received message from service worker:', event.data);
+          });
         })
         .catch((error) => {
           console.log('Service Worker registration failed:', error);

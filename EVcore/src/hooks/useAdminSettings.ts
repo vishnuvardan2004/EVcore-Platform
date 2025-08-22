@@ -38,7 +38,7 @@ export const useAdminSettings = (): UseAdminSettingsReturn => {
   const [error, setError] = useState<string | null>(null);
 
   // Check if user has access to admin settings
-  const canAccessAdminSettings = user?.role === 'super-admin';
+  const canAccessAdminSettings = user?.role === 'super_admin';
 
   /**
    * Fetch all role permissions from backend
