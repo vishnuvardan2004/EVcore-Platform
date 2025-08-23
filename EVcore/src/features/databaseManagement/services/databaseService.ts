@@ -3,15 +3,15 @@ import { config } from '../../../config/environment';
 
 // Define all available modules in the database management system
 export const DATABASE_MODULES = {
-  VEHICLES: 'vehicles',
+  VEHICLES: 'vehicle',
   CHARGING_EQUIPMENT: 'chargingequipment',
   ELECTRICAL_EQUIPMENT: 'electricequipment',
   IT_EQUIPMENT: 'itequipment',
   INFRASTRUCTURE_FURNITURE: 'infrastructurefurniture',
-  EMPLOYEES: 'employees',
-  PILOTS: 'pilots',
-  CHARGING_STATIONS: 'chargingstations',
-  TRIPS: 'trips',
+  EMPLOYEES: 'employee',
+  PILOTS: 'pilot',
+  CHARGING_STATIONS: 'chargingstation',
+  TRIPS: 'trip',
   MAINTENANCE: 'maintenance'
 } as const;
 

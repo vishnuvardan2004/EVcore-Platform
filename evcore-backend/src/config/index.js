@@ -76,26 +76,8 @@ const config = {
   
   // CORS Configuration
   cors: {
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [
-        'http://localhost:5173', 
-        'http://localhost:8080', 
-        'http://localhost:8081', 
-        'http://localhost:8083',
-        'http://127.0.0.1:8080',
-        'http://127.0.0.1:5173'
-      ];
-      
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        console.log('🚫 CORS blocked origin:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: true, // Allow all origins in development
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
     allowedHeaders: [
       'Origin',

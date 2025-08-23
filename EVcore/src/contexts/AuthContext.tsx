@@ -78,7 +78,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               setUser(null);
             }
           } catch (error) {
-            console.error('❌ JWT token verification error:', error);
+            // Silently handle verification errors - token might be expired or invalid
+            console.log('🧹 Clearing invalid token from localStorage (verification failed)');
             // Clear all auth data on any error
             localStorage.removeItem(config.TOKEN_STORAGE_KEY);
             localStorage.removeItem(config.REFRESH_TOKEN_STORAGE_KEY);

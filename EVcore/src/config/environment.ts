@@ -1,10 +1,10 @@
 export const config = {
   // API Configuration
-  API_BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3002',
-  WS_URL: import.meta.env.VITE_WS_URL || 'ws://localhost:3002',
+  API_BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+  WS_URL: import.meta.env.VITE_WS_URL || 'ws://localhost:3001',
   
   // File Upload Configuration
-  FILE_UPLOAD_URL: import.meta.env.VITE_UPLOAD_URL || 'http://localhost:3002/upload',
+  FILE_UPLOAD_URL: import.meta.env.VITE_UPLOAD_URL || 'http://localhost:3001/upload',
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
   SUPPORTED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   SUPPORTED_DOC_TYPES: [
