@@ -8,6 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { 
   Car, 
@@ -19,7 +30,7 @@ import {
   Fuel,
   ChevronDown,
   ChevronUp,
-  Eye
+  Trash2
 } from 'lucide-react';
 import { Vehicle } from '../types';
 import { dbApi } from '../services/api';
@@ -34,6 +45,7 @@ export const VehicleManagementSimple: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Vehicle>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchVehicles();
@@ -324,6 +336,45 @@ export const VehicleManagementSimple: React.FC = () => {
     }
   };
 
+  const handleDelete = async (vehicleId: string, vehicleName: string) => {
+    try {
+      setDeleteLoading(vehicleId);
+      console.log('Deleting vehicle:', vehicleId);
+      
+      const response = await dbApi.deleteVehicle(vehicleId);
+      console.log('Vehicle deletion response:', response);
+      
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: `Vehicle "${vehicleName}" has been deleted successfully.`,
+        });
+        
+        // Refresh the vehicles list
+        await fetchVehicles();
+      } else {
+        throw new Error(response.message || 'Failed to delete vehicle');
+      }
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      
+      let errorMessage = "Failed to delete vehicle. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && (error as any).message) {
+        errorMessage = (error as any).message;
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -429,6 +480,43 @@ export const VehicleManagementSimple: React.FC = () => {
                             <span>Registered: {new Date(vehicle.Registration_Date).toLocaleDateString()}</span>
                           </div>
                         )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="mt-4 pt-3 border-t border-gray-100">
+                        <div className="flex justify-end gap-2">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                disabled={deleteLoading === vehicle._id}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                {deleteLoading === vehicle._id ? 'Deleting...' : 'Delete'}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Vehicle</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{vehicle.Registration_Number} - {vehicle.Brand} {vehicle.Model}"? 
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(vehicle._id!, `${vehicle.Registration_Number} - ${vehicle.Brand} ${vehicle.Model}`)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete Vehicle
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
 
                       {/* Expandable Details Section */}

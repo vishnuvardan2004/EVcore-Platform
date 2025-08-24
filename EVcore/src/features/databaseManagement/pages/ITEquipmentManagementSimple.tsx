@@ -9,7 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, Monitor, Calendar, MapPin, User, Package, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Plus, Search, Monitor, Calendar, MapPin, User, Package, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { dbApi } from '../services/api';
 import { ITEquipment } from '../types';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +31,7 @@ const ITEquipmentManagementSimple = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Form state for new IT equipment
@@ -228,6 +240,45 @@ const ITEquipmentManagementSimple = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (equipmentId: string, equipmentName: string) => {
+    try {
+      setDeleteLoading(equipmentId);
+      console.log('Deleting IT equipment:', equipmentId);
+      
+      const response = await dbApi.deleteITEquipment(equipmentId);
+      console.log('IT equipment deletion response:', response);
+      
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: `IT equipment "${equipmentName}" has been deleted successfully.`,
+        });
+        
+        // Refresh the equipment list
+        await fetchITEquipments();
+      } else {
+        throw new Error(response.message || 'Failed to delete IT equipment');
+      }
+    } catch (error) {
+      console.error('Error deleting IT equipment:', error);
+      
+      let errorMessage = "Failed to delete IT equipment. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && (error as any).message) {
+        errorMessage = (error as any).message;
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
@@ -686,6 +737,43 @@ const ITEquipmentManagementSimple = () => {
                     )}
                   </div>
                 )}
+
+                {/* Action Buttons */}
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <div className="flex justify-end gap-2">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          disabled={deleteLoading === uniqueId}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {deleteLoading === uniqueId ? 'Deleting...' : 'Delete'}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete IT Equipment</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{item.assetId} - {item.assetType}"? 
+                            This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(uniqueId, `${item.assetId} - ${item.assetType}`)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Delete Equipment
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
 
                 {/* Expandable Details Section */}
                 {isExpanded && renderDetailedView(item)}

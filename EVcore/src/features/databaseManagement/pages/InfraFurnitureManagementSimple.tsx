@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Building2, Calendar, MapPin, Package2, Home, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Building2, Calendar, MapPin, Package2, Home, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { dbApi } from '../services/api';
 import { InfraFurniture } from '../types';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +19,7 @@ const InfraFurnitureManagementSimple = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -294,6 +296,34 @@ const InfraFurnitureManagementSimple = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (furnitureId: string) => {
+    setDeleteLoading(true);
+    try {
+      const response = await dbApi.deleteInfraFurniture(furnitureId);
+      
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Infrastructure & furniture deleted successfully"
+        });
+        
+        // Refresh the furniture list
+        await fetchInfraFurniture();
+      } else {
+        throw new Error('Failed to delete infrastructure & furniture');
+      }
+    } catch (error) {
+      console.error('Error deleting infrastructure & furniture:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete infrastructure & furniture. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -764,6 +794,41 @@ const InfraFurnitureManagementSimple = () => {
 
                 {/* Expandable Details Section */}
                 {isExpanded && renderDetailedView(item)}
+
+                {/* Action Buttons */}
+                <div className="mt-4 flex gap-2 pt-3 border-t">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        disabled={deleteLoading}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Infrastructure & Furniture</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{item.assetType} - {item.assetId}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete((item as any)._id)}
+                          className="bg-red-600 hover:bg-red-700"
+                          disabled={deleteLoading}
+                        >
+                          {deleteLoading ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CardContent>
             </Card>
           );

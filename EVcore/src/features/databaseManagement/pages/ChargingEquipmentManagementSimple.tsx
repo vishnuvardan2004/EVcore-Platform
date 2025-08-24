@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +20,7 @@ import {
   Power,
   ChevronDown,
   ChevronUp,
-  Eye
+  Trash2
 } from 'lucide-react';
 import { dbApi } from '../services/api';
 import { ChargingEquipment } from '../types';
@@ -50,6 +51,7 @@ export const ChargingEquipmentManagementSimple: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [formData, setFormData] = useState<ChargingEquipmentForm>({});
   const [saving, setSaving] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -254,6 +256,34 @@ export const ChargingEquipmentManagementSimple: React.FC = () => {
     }
   };
 
+  const handleDelete = async (equipmentId: string) => {
+    setDeleteLoading(true);
+    try {
+      const response = await dbApi.deleteChargingEquipment(equipmentId);
+      
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Charging equipment deleted successfully"
+        });
+        
+        // Refresh the equipment list
+        await fetchEquipment();
+      } else {
+        throw new Error('Failed to delete charging equipment');
+      }
+    } catch (error) {
+      console.error('Error deleting charging equipment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete charging equipment. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -371,6 +401,41 @@ export const ChargingEquipmentManagementSimple: React.FC = () => {
 
                       {/* Expandable Details Section */}
                       {isExpanded && renderDetailedView(item)}
+
+                      {/* Action Buttons */}
+                      <div className="mt-4 flex gap-2 pt-3 border-t">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={deleteLoading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Charging Equipment</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{item.chargingEquipmentId} - {item.name}"? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(item._id!)}
+                                className="bg-red-600 hover:bg-red-700"
+                                disabled={deleteLoading}
+                              >
+                                {deleteLoading ? 'Deleting...' : 'Delete'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </CardContent>
                   </Card>
                 );
