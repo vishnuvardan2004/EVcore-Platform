@@ -35,7 +35,7 @@ export const dbApi = {
     }),
   updateEmployee: (id: string, updates: Partial<Employee>) =>
     apiService.request<Employee>(`/api/database-mgmt/platforms/employee/documents/${id}`, { 
-      method: 'PATCH', 
+      method: 'PUT', 
       body: JSON.stringify({ updates }), // Backend expects updates wrapped in 'updates' property
       headers: {
         'Content-Type': 'application/json'

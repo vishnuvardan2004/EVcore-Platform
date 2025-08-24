@@ -30,7 +30,6 @@ import {
   User,
   Briefcase,
   Clock,
-  DollarSign,
   Eye
 } from 'lucide-react';
 import { dbApi } from '../services/api';
@@ -49,6 +48,24 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+
+// Helper function to safely format dates for input fields
+const formatDateForInput = (dateValue: any): string => {
+  // Handle specific "N/A" string that comes from data sanitization
+  if (dateValue === "N/A" || dateValue === "N/A" || !dateValue) return '';
+  
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date value:', dateValue);
+      return '';
+    }
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    console.warn('Error formatting date:', dateValue, error);
+    return '';
+  }
+};
 
 type EmployeeStatus = 'Active' | 'On Leave' | 'Terminated';
 
@@ -71,6 +88,8 @@ export const EmployeeManagement: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 
   const canEdit = user?.role && ['super_admin', 'admin'].includes(user.role);
   const canDelete = user?.role && ['super_admin', 'admin'].includes(user.role);
@@ -284,7 +303,23 @@ export const EmployeeManagement: React.FC = () => {
         } else {
           // Ensure all employee records have safe default values
           // Map backend field names to frontend field names
-          const sanitizedData = employees.map((emp: any) => ({
+          console.log('=== DATA SANITIZATION DEBUG ===');
+          console.log('Raw employees data from backend:', employees);
+          console.log('Number of employees:', employees.length);
+          if (employees.length > 0) {
+            console.log('First employee raw data:', employees[0]);
+            console.log('First employee keys:', Object.keys(employees[0]));
+          }
+          
+          const sanitizedData = employees.map((emp: any, index: number) => {
+            console.log(`Processing employee ${index + 1}:`, {
+              original_panNumber: emp.panNumber,
+              original_aadharNumber: emp.aadharNumber,
+              original_address: emp.address,
+              original_emergencyContact: emp.emergencyContact
+            });
+            
+            return {
             id: emp._id || emp.id || `emp-${Date.now()}-${Math.random()}`,
             employeeId: emp.employeeId || 'N/A',
             fullName: emp.fullName || 'Unknown Employee',
@@ -321,7 +356,13 @@ export const EmployeeManagement: React.FC = () => {
             esicNumber: emp.esicNumber || '',
             photoUrl: emp.photoUrl || '',
             dlCopyUrl: emp.dlCopyUrl || ''
-          }));
+            };
+          });
+          
+          console.log('=== SANITIZED DATA ===');
+          console.log('Sanitized employees:', sanitizedData);
+          console.log('=== END SANITIZATION DEBUG ===');
+          
           setEmployees(sanitizedData);
           setFilteredEmployees(sanitizedData);
         }
@@ -441,6 +482,23 @@ export const EmployeeManagement: React.FC = () => {
     
     setFilteredEmployees(filtered);
   }, [searchTerm, statusFilter, departmentFilter, roleFilter, employees]);
+
+  // Debug useEffect to monitor dialog state changes
+  useEffect(() => {
+    console.log('=== DIALOG STATE CHANGE ===');
+    console.log('isAddDialogOpen:', isAddDialogOpen);
+    console.log('editingEmployee:', editingEmployee);
+    console.log('formData keys:', Object.keys(formData));
+    console.log('formData sample:', {
+      employeeId: formData.employeeId,
+      fullName: formData.fullName,
+      emailId: formData.emailId,
+      dateOfBirth: formData.dateOfBirth,
+      department: formData.department,
+      designation: formData.designation
+    });
+    console.log('Full formData object:', formData);
+  }, [isAddDialogOpen, editingEmployee, formData]);
 
   const departments = Array.from(new Set(
     employees
@@ -655,10 +713,103 @@ export const EmployeeManagement: React.FC = () => {
   };
 
   const openEditDialog = (employee: Employee) => {
-    setFormData(employee);
-    setEditingEmployee(employee);
-    setFormErrors({});
-    setIsAddDialogOpen(true);
+    try {
+      console.log('=== EDIT DIALOG DEBUG ===');
+      console.log('Employee to edit:', employee);
+      console.log('Current formData before:', formData);
+      console.log('Current editingEmployee before:', editingEmployee);
+      console.log('Current isAddDialogOpen before:', isAddDialogOpen);
+      
+      // Map employee data to form structure with all fields
+      const mappedFormData: Partial<Employee> = {
+        // Primary identification
+        employeeId: employee.employeeId,
+        fullName: employee.fullName,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        
+        // Personal information
+        gender: employee.gender,
+        dateOfBirth: employee.dateOfBirth,
+        contactNumber: employee.contactNumber,
+        emailId: employee.emailId,
+        aadharNumber: employee.aadharNumber,
+        panNumber: employee.panNumber,
+        address: employee.address,
+        city: employee.city,
+        emergencyContact: employee.emergencyContact,
+        maritalStatus: employee.maritalStatus,
+        
+        // Employment information
+        dateOfJoining: employee.dateOfJoining,
+        employmentType: employee.employmentType,
+        designation: employee.designation,
+        department: employee.department,
+        reportingManagerId: employee.reportingManagerId,
+        shiftType: employee.shiftType,
+        workLocation: employee.workLocation,
+        employeeStatus: employee.employeeStatus,
+        
+        // Financial information
+        salaryMode: employee.salaryMode,
+        monthlySalary: employee.monthlySalary,
+        bankAccountNumber: employee.bankAccountNumber,
+        ifscCode: employee.ifscCode,
+        uanNumber: employee.uanNumber,
+        esicNumber: employee.esicNumber,
+        pfEligible: employee.pfEligible,
+        
+        // Documents and verification
+        photoUrl: employee.photoUrl,
+        dlCopyUrl: employee.dlCopyUrl,
+        backgroundCheckStatus: employee.backgroundCheckStatus,
+        
+        // System fields
+        role: employee.role,
+        
+        // Legacy compatibility fields
+        email: employee.emailId || employee.email,
+        phone: employee.contactNumber || employee.phone,
+        position: employee.designation || employee.position,
+        hireDate: employee.dateOfJoining || employee.hireDate,
+        status: employee.employeeStatus || employee.status
+      };
+      
+      console.log('Mapped form data:', mappedFormData);
+      
+      setFormData(mappedFormData);
+      setEditingEmployee(employee);
+      setFormErrors({});
+      setIsAddDialogOpen(true);
+      
+      console.log('=== EDIT DIALOG SET COMPLETE ===');
+    } catch (error) {
+      console.error('Error in openEditDialog:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to open edit dialog. Please try again."
+      });
+    }
+  };
+
+  const openViewDialog = (employee: Employee) => {
+    console.log('=== VIEW DIALOG DEBUG ===');
+    console.log('Employee data received:', employee);
+    console.log('Employee PAN Number:', employee.panNumber);
+    console.log('Employee Aadhar Number:', employee.aadharNumber);
+    console.log('Employee Address:', employee.address);
+    console.log('Employee Emergency Contact:', employee.emergencyContact);
+    console.log('All employee fields:', Object.keys(employee));
+    console.log('=== END VIEW DIALOG DEBUG ===');
+    
+    setViewingEmployee(employee);
+    setIsViewDialogOpen(true);
+  };
+
+  const closeViewDialog = () => {
+    setIsViewDialogOpen(false);
+    setViewingEmployee(null);
   };
 
   const closeDialog = () => {
@@ -923,7 +1074,7 @@ export const EmployeeManagement: React.FC = () => {
                         <span>Joined: {formatDate(employee.dateOfJoining)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4" />
+                        <CreditCard className="w-4 h-4" />
                         <span>{formatCurrency(employee.monthlySalary)} ({employee.salaryMode})</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -934,7 +1085,12 @@ export const EmployeeManagement: React.FC = () => {
 
                     {(canEdit || canDelete) && (
                       <div className="flex gap-2 mt-4 pt-3 border-t">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => openViewDialog(employee)}
+                        >
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
@@ -1085,7 +1241,7 @@ export const EmployeeManagement: React.FC = () => {
                   <Input
                     id="dateOfBirth"
                     type="date"
-                    value={formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString().split('T')[0] : ''}
+                    value={formatDateForInput(formData.dateOfBirth)}
                     onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
                     className={formErrors.dateOfBirth ? 'border-red-500' : ''}
                   />
@@ -1266,7 +1422,7 @@ export const EmployeeManagement: React.FC = () => {
                   <Input
                     id="dateOfJoining"
                     type="date"
-                    value={formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString().split('T')[0] : ''}
+                    value={formatDateForInput(formData.dateOfJoining)}
                     onChange={(e) => setFormData({...formData, dateOfJoining: e.target.value})}
                     className={formErrors.dateOfJoining ? 'border-red-500' : ''}
                   />
@@ -1558,6 +1714,199 @@ export const EmployeeManagement: React.FC = () => {
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Employee Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Employee Details - {viewingEmployee?.fullName}
+            </DialogTitle>
+            <DialogDescription>
+              Complete employee information and records
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingEmployee && (
+            <div className="space-y-6">
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Personal Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Employee ID</Label>
+                    <p className="font-mono text-sm">{viewingEmployee.employeeId}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Full Name</Label>
+                    <p>{viewingEmployee.fullName}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Gender</Label>
+                    <p>{viewingEmployee.gender}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Date of Birth</Label>
+                    <p>{formatDate(viewingEmployee.dateOfBirth)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Marital Status</Label>
+                    <p>{viewingEmployee.maritalStatus}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Status</Label>
+                    <div>{getStatusBadge(viewingEmployee.employeeStatus)}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Email</Label>
+                    <p className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      {viewingEmployee.emailId}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Phone</Label>
+                    <p className="flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      {viewingEmployee.contactNumber}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Address</Label>
+                    <p className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      {viewingEmployee.address}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">City</Label>
+                    <p>{viewingEmployee.city}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Emergency Contact</Label>
+                    <p>{viewingEmployee.emergencyContact}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Identity Documents */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Identity Documents</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Aadhar Number</Label>
+                    <p className="font-mono">{viewingEmployee.aadharNumber}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">PAN Number</Label>
+                    <p className="font-mono">{viewingEmployee.panNumber}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Background Check</Label>
+                    <Badge variant={viewingEmployee.backgroundCheckStatus === 'Cleared' ? 'default' : 
+                                  viewingEmployee.backgroundCheckStatus === 'Pending' ? 'secondary' : 'destructive'}>
+                      <Shield className="w-3 h-3 mr-1" />
+                      {viewingEmployee.backgroundCheckStatus}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employment Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Employment Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Date of Joining</Label>
+                    <p className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      {formatDate(viewingEmployee.dateOfJoining)}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Employment Type</Label>
+                    <p>{viewingEmployee.employmentType}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Designation</Label>
+                    <p className="flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      {viewingEmployee.designation}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Department</Label>
+                    <p className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      {viewingEmployee.department}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Role</Label>
+                    <p className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      {viewingEmployee.role || 'Employee'}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Shift Type</Label>
+                    <p className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      {viewingEmployee.shiftType}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Work Location</Label>
+                    <p>{viewingEmployee.workLocation}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Salary Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Salary Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Monthly Salary</Label>
+                    <p className="flex items-center gap-2 text-lg font-semibold">
+                      <CreditCard className="w-5 h-5" />
+                      {formatCurrency(viewingEmployee.monthlySalary)}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-gray-600">Salary Mode</Label>
+                    <p>{viewingEmployee.salaryMode}</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeViewDialog}>
+              Close
+            </Button>
+            {canEdit && viewingEmployee && (
+              <Button onClick={() => {
+                closeViewDialog();
+                openEditDialog(viewingEmployee);
+              }}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Employee
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

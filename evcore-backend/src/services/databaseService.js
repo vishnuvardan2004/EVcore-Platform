@@ -20,20 +20,61 @@ class DatabaseService {
    * Initialize default schemas for existing collections
    */
   initializeDefaultSchemas() {
-    // Employee Schema
+    // Employee Schema - Updated to match frontend Employee interface
     const employeeSchema = {
       name: 'Employee',
       fields: {
+        // Primary identification
         fullName: { type: 'String', required: true, maxLength: 100 },
         email: { type: 'String', required: true },
         employeeId: { type: 'String', required: true },
+        
+        // Personal information
+        firstName: { type: 'String' },
+        lastName: { type: 'String' },
+        gender: { type: 'String', enum: ['Male', 'Female', 'Other'] },
+        dateOfBirth: { type: 'String' },
+        contactNumber: { type: 'String' },
+        emailId: { type: 'String' }, // Frontend uses emailId, backend uses email
+        aadharNumber: { type: 'String' },
+        panNumber: { type: 'String' },
+        address: { type: 'String' },
+        city: { type: 'String' },
+        emergencyContact: { type: 'String' },
+        maritalStatus: { type: 'String', enum: ['Single', 'Married', 'Divorced'] },
+        
+        // Employment information
         department: { type: 'String', required: true },
-        position: { type: 'String', required: true },
+        position: { type: 'String', required: true }, // Backend uses position, frontend uses designation
+        designation: { type: 'String' }, // For compatibility
+        employmentType: { type: 'String', enum: ['Full-Time', 'Part-Time', 'Contract', 'Intern'] },
+        reportingManagerId: { type: 'String' },
+        shiftType: { type: 'String', enum: ['Morning', 'Evening', 'Rotational'] },
+        workLocation: { type: 'String' },
+        employeeStatus: { type: 'String', enum: ['Active', 'On Leave', 'Terminated'] },
+        
+        // Financial information
         salary: { type: 'Number', min: 0 },
+        salaryMode: { type: 'String', enum: ['Bank', 'UPI', 'Cash'] },
+        monthlySalary: { type: 'Number', min: 0 },
+        bankAccountNumber: { type: 'String' },
+        ifscCode: { type: 'String' },
+        uanNumber: { type: 'String' },
+        esicNumber: { type: 'String' },
+        pfEligible: { type: 'Boolean', default: false },
+        
+        // Documents and verification
+        photoUrl: { type: 'String' },
+        dlCopyUrl: { type: 'String' },
+        backgroundCheckStatus: { type: 'String', enum: ['Pending', 'Cleared', 'Rejected'], default: 'Pending' },
+        
+        // System fields
         hireDate: { type: 'Date', default: 'Date.now' },
+        dateOfJoining: { type: 'String' }, // Frontend uses dateOfJoining
         isActive: { type: 'Boolean', default: true },
         permissions: [{ type: 'String' }],
         lastLogin: { type: 'Date' },
+        role: { type: 'String', default: 'employee' },
         createdBy: { type: 'ObjectId', ref: 'User' },
         updatedBy: { type: 'ObjectId', ref: 'User' }
       },
