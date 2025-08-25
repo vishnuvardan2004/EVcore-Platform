@@ -278,100 +278,6 @@ class DatabaseService {
       }
     };
 
-    // Trip Schema
-    const tripSchema = {
-      name: 'Trip',
-      fields: {
-        tripId: { type: 'String', required: true },
-        vehicle: { type: 'ObjectId', ref: 'Vehicle', required: true },
-        pilot: { type: 'ObjectId', ref: 'Pilot', required: true },
-        startLocation: {
-          lat: { type: 'Number', required: true },
-          lng: { type: 'Number', required: true },
-          address: { type: 'String', required: true }
-        },
-        endLocation: {
-          lat: { type: 'Number', required: true },
-          lng: { type: 'Number', required: true },
-          address: { type: 'String', required: true }
-        },
-        startTime: { type: 'Date', required: true },
-        endTime: { type: 'Date' },
-        distance: { type: 'Number' }, // km
-        duration: { type: 'Number' }, // minutes
-        startBatteryLevel: { type: 'Number', min: 0, max: 100 },
-        endBatteryLevel: { type: 'Number', min: 0, max: 100 },
-        energyConsumed: { type: 'Number' }, // kWh
-        status: { type: 'String', enum: ['planned', 'in_progress', 'completed', 'cancelled'], default: 'planned' },
-        fare: { type: 'Number', min: 0 },
-        customer: {
-          name: { type: 'String' },
-          phone: { type: 'String' },
-          email: { type: 'String' }
-        },
-        isActive: { type: 'Boolean', default: true },
-        createdBy: { type: 'ObjectId', ref: 'User' },
-        updatedBy: { type: 'ObjectId', ref: 'User' }
-      },
-      indexes: [
-        { fields: { tripId: 1 }, options: { unique: true } },
-        { fields: { vehicle: 1, startTime: 1 } },
-        { fields: { pilot: 1, startTime: 1 } },
-        { fields: { status: 1 } },
-        { fields: { startTime: 1 } }
-      ],
-      validation: {
-        required: ['tripId', 'vehicle', 'pilot', 'startLocation', 'endLocation', 'startTime'],
-        unique: ['tripId']
-      }
-    };
-
-    // Maintenance Record Schema
-    const maintenanceSchema = {
-      name: 'Maintenance',
-      fields: {
-        maintenanceId: { type: 'String', required: true },
-        target: {
-          type: { type: 'String', enum: ['vehicle', 'equipment', 'station'], required: true },
-          id: { type: 'ObjectId', required: true },
-          name: { type: 'String', required: true }
-        },
-        type: { type: 'String', enum: ['preventive', 'corrective', 'emergency'], required: true },
-        description: { type: 'String', required: true },
-        scheduledDate: { type: 'Date', required: true },
-        completedDate: { type: 'Date' },
-        technician: {
-          name: { type: 'String', required: true },
-          id: { type: 'String' },
-          company: { type: 'String' }
-        },
-        partsUsed: [{
-          partName: { type: 'String' },
-          partNumber: { type: 'String' },
-          quantity: { type: 'Number' },
-          cost: { type: 'Number' }
-        }],
-        laborHours: { type: 'Number' },
-        totalCost: { type: 'Number' },
-        status: { type: 'String', enum: ['scheduled', 'in_progress', 'completed', 'cancelled'], default: 'scheduled' },
-        priority: { type: 'String', enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
-        notes: { type: 'String' },
-        isActive: { type: 'Boolean', default: true },
-        createdBy: { type: 'ObjectId', ref: 'User' },
-        updatedBy: { type: 'ObjectId', ref: 'User' }
-      },
-      indexes: [
-        { fields: { maintenanceId: 1 }, options: { unique: true } },
-        { fields: { 'target.type': 1, 'target.id': 1 } },
-        { fields: { status: 1, priority: 1 } },
-        { fields: { scheduledDate: 1 } }
-      ],
-      validation: {
-        required: ['maintenanceId', 'target.type', 'target.id', 'target.name', 'type', 'description', 'scheduledDate', 'technician.name'],
-        unique: ['maintenanceId']
-      }
-    };
-
     // Charging Equipment Schema (Separate from Electric Equipment)
     const chargingEquipmentSchema = {
       name: 'ChargingEquipment',
@@ -628,8 +534,6 @@ class DatabaseService {
     this.registerSchema(itEquipmentSchema);
     this.registerSchema(infrastructureFurnitureSchema);
     this.registerSchema(chargingStationSchema);
-    this.registerSchema(tripSchema);
-    this.registerSchema(maintenanceSchema);
   }
 
   /**

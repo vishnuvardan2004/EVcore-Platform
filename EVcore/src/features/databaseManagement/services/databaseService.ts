@@ -10,9 +10,7 @@ export const DATABASE_MODULES = {
   INFRASTRUCTURE_FURNITURE: 'infrastructurefurniture',
   EMPLOYEES: 'employee',
   PILOTS: 'pilot',
-  CHARGING_STATIONS: 'chargingstation',
-  TRIPS: 'trip',
-  MAINTENANCE: 'maintenance'
+  CHARGING_STATIONS: 'chargingstation'
 } as const;
 
 export type DatabaseModule = typeof DATABASE_MODULES[keyof typeof DATABASE_MODULES];
@@ -65,19 +63,7 @@ export const MODULE_CONFIG = {
     displayName: 'Charging Stations',
     icon: 'MapPin',
     description: 'Multi-charger station management',
-    color: 'teal'
-  },
-  [DATABASE_MODULES.TRIPS]: {
-    displayName: 'Trips',
-    icon: 'Route',
-    description: 'Journey tracking and analytics',
-    color: 'cyan'
-  },
-  [DATABASE_MODULES.MAINTENANCE]: {
-    displayName: 'Maintenance',
-    icon: 'Wrench',
-    description: 'Equipment and vehicle maintenance',
-    color: 'gray'
+    color: 'pink'
   }
 };
 
