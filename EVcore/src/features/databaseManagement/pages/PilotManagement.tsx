@@ -15,7 +15,7 @@ import {
   Eye,
   AlertTriangle
 } from 'lucide-react';
-import { pilotService } from '../../../services/database';
+import { pilotApiService } from '../../../services/pilotApi';
 import { Pilot } from '../../../types/pilot';
 import { useToast } from '../../../hooks/use-toast';
 import {
@@ -43,7 +43,7 @@ export const PilotManagement: React.FC = () => {
   const loadPilots = async () => {
     try {
       setLoading(true);
-      const allPilots = await pilotService.getAllPilots();
+      const allPilots = await pilotApiService.getAllPilots();
       setPilots(allPilots);
       setFilteredPilots(allPilots);
     } catch (error) {
@@ -82,7 +82,7 @@ export const PilotManagement: React.FC = () => {
   const handleDeletePilot = async (pilotId: string) => {
     try {
       setDeleteLoading(pilotId);
-      await pilotService.deletePilot(pilotId);
+      await pilotApiService.deletePilot(pilotId);
       
       toast({
         title: "Success",

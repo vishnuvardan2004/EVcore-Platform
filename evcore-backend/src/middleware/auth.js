@@ -49,10 +49,13 @@ const verifyToken = catchAsync(async (req, res, next) => {
 // Authorize based on roles
 const authorize = (...roles) => {
   return (req, res, next) => {
+    // Flatten the roles array in case it's passed as a single array argument
+    const flatRoles = roles.flat();
+    
     console.log('🔐 Authorization check:', {
       userRole: req.user?.role,
       userEmail: req.user?.email,
-      allowedRoles: roles,
+      allowedRoles: flatRoles,
       endpoint: req.path
     });
 
@@ -61,13 +64,13 @@ const authorize = (...roles) => {
       return next(new AppError('Authentication required', 401));
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!flatRoles.includes(req.user.role)) {
       console.log('❌ Authorization failed:', {
         userRole: req.user.role,
-        allowedRoles: roles,
-        message: `User with role '${req.user.role}' not in allowed roles: [${roles.join(', ')}]`
+        allowedRoles: flatRoles,
+        message: `User with role '${req.user.role}' not in allowed roles: [${flatRoles.join(', ')}]`
       });
-      return next(new AppError(`Access denied. Required roles: ${roles.join(', ')}. Your role: ${req.user.role}`, 403));
+      return next(new AppError(`Access denied. Required roles: ${flatRoles.join(', ')}. Your role: ${req.user.role}`, 403));
     }
 
     console.log('✅ Authorization successful for role:', req.user.role);

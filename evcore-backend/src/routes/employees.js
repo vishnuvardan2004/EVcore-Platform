@@ -102,7 +102,7 @@ const updateEmployeeValidation = [
 // Apply authentication to all routes
 router.use(verifyToken);
 
-// @desc    Get all employees
+// @desc    Get all employees (excluding pilots - they have separate management)
 // @route   GET /api/employees
 // @access  Private (admin)
 router.get('/', 
@@ -110,7 +110,7 @@ router.get('/',
   async (req, res) => {
     try {
       const employees = await User.find({ 
-        role: { $in: ['employee', 'pilot'] },
+        role: { $in: ['super_admin', 'admin', 'employee'] }, // Exclude pilots
         active: true 
       }).select('-password -refreshTokens');
 

@@ -63,12 +63,17 @@ export interface DriverInductionSubmissionDTO {
 }
 
 export interface DriverInductionResponseDTO {
-  pilotId: string;
-  evzipId: string;
-  status: 'pending' | 'approved' | 'rejected';
-  inductionDate: string;
-  createdAt: string;
-  updatedAt: string;
+  pilot: {
+    pilotId: string;
+    fullName: string;
+    email: string;
+    mobileNumber: string;
+  };
+  credentials: {
+    email: string;
+    defaultPassword: string;
+    role: string;
+  };
 }
 
 export interface PilotListDTO {

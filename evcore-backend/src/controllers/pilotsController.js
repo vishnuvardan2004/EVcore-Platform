@@ -3,7 +3,7 @@ const DatabaseService = require('../services/databaseService');
 const AuditService = require('../services/auditService');
 const logger = require('../utils/logger');
 
-const databaseService = new DatabaseService();
+const databaseService = DatabaseService.getInstance();
 
 // @desc    Get all pilots
 // @route   GET /api/pilots
@@ -69,7 +69,7 @@ const getPilot = catchAsync(async (req, res, next) => {
   });
 });
 
-// @desc    Create new pilot
+// @desc    Create new pilot (Note: Use driver induction endpoint for complete pilot creation with user account)
 // @route   POST /api/pilots
 // @access  Private
 const createPilot = catchAsync(async (req, res, next) => {
@@ -82,15 +82,16 @@ const createPilot = catchAsync(async (req, res, next) => {
   const pilot = await databaseService.createDocument('Pilot', pilotData);
 
   // Log audit trail
-  await AuditService.logDatabaseAction({
-    action: 'CREATE',
-    collection: 'pilots',
-    documentId: pilot._id,
-    changes: pilotData,
+  await AuditService.logAction({
     userId: req.user.id,
     userEmail: req.user.email,
-    ipAddress: req.ip,
-    userAgent: req.get('User-Agent')
+    userRole: req.user.role,
+    action: 'CREATE_DOCUMENT',
+    platform: 'pilot',
+    documentId: pilot._id,
+    details: pilotData,
+    result: { success: true, recordsAffected: 1 },
+    req
   });
 
   res.status(201).json({
@@ -117,16 +118,16 @@ const updatePilot = catchAsync(async (req, res, next) => {
   const pilot = await databaseService.updateDocument('Pilot', req.params.id, updateData);
 
   // Log audit trail
-  await AuditService.logDatabaseAction({
-    action: 'UPDATE',
-    collection: 'pilots',
-    documentId: pilot._id,
-    changes: updateData,
-    previousData: originalPilot,
+  await AuditService.logAction({
     userId: req.user.id,
     userEmail: req.user.email,
-    ipAddress: req.ip,
-    userAgent: req.get('User-Agent')
+    userRole: req.user.role,
+    action: 'UPDATE_DOCUMENT',
+    platform: 'pilot',
+    documentId: pilot._id,
+    details: { updateData, previousData: originalPilot },
+    result: { success: true, recordsAffected: 1 },
+    req
   });
 
   res.status(200).json({
@@ -157,16 +158,19 @@ const updatePilotStatus = catchAsync(async (req, res, next) => {
   });
 
   // Log audit trail
-  await AuditService.logDatabaseAction({
-    action: 'UPDATE',
-    collection: 'pilots',
-    documentId: pilot._id,
-    changes: { currentStatus },
-    previousData: { currentStatus: originalPilot.currentStatus },
+  await AuditService.logAction({
     userId: req.user.id,
     userEmail: req.user.email,
-    ipAddress: req.ip,
-    userAgent: req.get('User-Agent')
+    userRole: req.user.role,
+    action: 'UPDATE_DOCUMENT',
+    platform: 'pilot',
+    documentId: pilot._id,
+    details: { 
+      changes: { currentStatus },
+      previousData: { currentStatus: originalPilot.currentStatus }
+    },
+    result: { success: true, recordsAffected: 1 },
+    req
   });
 
   res.status(200).json({
@@ -191,16 +195,19 @@ const deletePilot = catchAsync(async (req, res, next) => {
   });
 
   // Log audit trail
-  await AuditService.logDatabaseAction({
-    action: 'DELETE',
-    collection: 'pilots',
-    documentId: req.params.id,
-    changes: { isActive: false },
-    previousData: originalPilot,
+  await AuditService.logAction({
     userId: req.user.id,
     userEmail: req.user.email,
-    ipAddress: req.ip,
-    userAgent: req.get('User-Agent')
+    userRole: req.user.role,
+    action: 'DELETE_DOCUMENT',
+    platform: 'pilot',
+    documentId: req.params.id,
+    details: { 
+      changes: { isActive: false },
+      previousData: originalPilot
+    },
+    result: { success: true, recordsAffected: 1 },
+    req
   });
 
   res.status(200).json({

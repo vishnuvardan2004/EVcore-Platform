@@ -1,10 +1,12 @@
-const databaseService = require('../services/databaseService');
+const DatabaseService = require('../services/databaseService');
 const auditService = require('../services/auditService');
 const { validationResult } = require('express-validator');
 const { catchAsync, AppError } = require('../middleware/errorHandler');
 const logger = require('../utils/logger');
 const path = require('path');
 const fs = require('fs').promises;
+
+const databaseService = DatabaseService.getInstance();
 
 /**
  * Database Management Controller

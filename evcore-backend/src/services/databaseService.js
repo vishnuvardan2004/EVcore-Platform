@@ -5,6 +5,9 @@ const csv = require('csv-parser');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const logger = require('../utils/logger');
 
+// Global instance for shared access
+let globalInstance = null;
+
 /**
  * Database Management Service
  * Handles all database operations for dynamic sub-platforms (collections)
@@ -13,7 +16,30 @@ class DatabaseService {
   constructor() {
     this.registeredSchemas = new Map();
     this.registeredModels = new Map();
+    this.isInitialized = false;
+  }
+
+  /**
+   * Get or create the global singleton instance
+   */
+  static getInstance() {
+    if (!globalInstance) {
+      globalInstance = new DatabaseService();
+    }
+    return globalInstance;
+  }
+
+  /**
+   * Initialize schemas after database connection is established
+   */
+  async initialize() {
+    if (this.isInitialized) {
+      return;
+    }
+    
     this.initializeDefaultSchemas();
+    this.isInitialized = true;
+    logger.info('DatabaseService initialized successfully');
   }
 
   /**
@@ -1105,4 +1131,4 @@ class DatabaseService {
   }
 }
 
-module.exports = new DatabaseService();
+module.exports = DatabaseService;

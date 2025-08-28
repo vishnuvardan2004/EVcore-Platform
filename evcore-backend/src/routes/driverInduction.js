@@ -10,6 +10,28 @@ const router = express.Router();
 router.use(verifyToken);
 
 // Validation rules
+const inductionSubmissionValidation = [
+  body('personalInfo.fullName')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Full name must be between 2 and 100 characters'),
+  
+  body('personalInfo.emailId')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email'),
+  
+  body('personalInfo.mobileNumber')
+    .trim()
+    .isMobilePhone()
+    .withMessage('Please provide a valid mobile number'),
+    
+  body('drivingInfo.licenseNumber')
+    .trim()
+    .isLength({ min: 5, max: 30 })
+    .withMessage('License number must be between 5 and 30 characters'),
+];
+
 const statusUpdateValidation = [
   body('status')
     .isIn(['active', 'inactive', 'pending'])
@@ -23,6 +45,14 @@ const idValidation = [
 ];
 
 // Routes
+
+// Submit driver induction (creates pilot profile and user account with 'pilot' role)
+router.post('/submit', 
+  authorize(['super_admin', 'admin', 'employee']), 
+  inductionSubmissionValidation, 
+  validateRequest, 
+  driverInductionController.submitDriverInduction
+);
 
 // Get all pilots for driver induction
 router.get('/pilots', 

@@ -1,5 +1,5 @@
 import { PilotInductionData, Pilot } from '../../../types/pilot';
-import driverInductionApi from './api';
+import { driverInductionApi } from './api';
 import { config } from '../../../config/environment';
 
 export interface DriverInductionResponse {

@@ -177,7 +177,7 @@ router.get('/:id',
   pilotsController.getPilot
 );
 
-// Create new pilot
+// Create new pilot (restricted to admin only - pilots should be created through driver induction)
 router.post('/', 
   authorize(['super_admin', 'admin']), 
   pilotValidation, 

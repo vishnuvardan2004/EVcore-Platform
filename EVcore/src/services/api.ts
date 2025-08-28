@@ -453,6 +453,34 @@ export class APIService {
     getRecentActivity: (limit = 10) =>
       this.request<any[]>(`/api/dashboard/activity?limit=${limit}`),
   };
+
+  // Database Management endpoints
+  databaseMgmt = {
+    pilots: {
+      getAll: () =>
+        this.request<any[]>('/api/database-mgmt/platforms/pilot/documents'),
+      
+      getById: (id: string) =>
+        this.request<any>(`/api/pilots/${id}`),
+      
+      create: (data: any) =>
+        this.request<any>('/api/pilots', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }),
+      
+      update: (id: string, data: any) =>
+        this.request<any>(`/api/pilots/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+      
+      delete: (id: string) =>
+        this.request<any>(`/api/pilots/${id}`, {
+          method: 'DELETE',
+        }),
+    },
+  };
 }
 
 export const apiService = new APIService();

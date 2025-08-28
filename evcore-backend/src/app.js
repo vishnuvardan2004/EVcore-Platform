@@ -3,6 +3,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const config = require('./config');
 const database = require('./config/database');
+const DatabaseService = require('./services/databaseService');
 const logger = require('./utils/logger');
 
 // Import middleware
@@ -19,12 +20,13 @@ const { globalErrorHandler, notFound } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
 const databaseMgmtRoutes = require('./routes/databaseMgmt');
-// const pilotsRoutes = require('./routes/pilots');
-// const driverInductionRoutes = require('./routes/driverInduction');
+const pilotsRoutes = require('./routes/pilots');
+const driverInductionRoutes = require('./routes/driverInduction');
 
 class App {
   constructor() {
     this.app = express();
+    this.databaseService = DatabaseService.getInstance();
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
@@ -97,109 +99,8 @@ class App {
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/employees', employeeRoutes);
     this.app.use('/api/database-mgmt', databaseMgmtRoutes);
-    // this.app.use('/api/pilots', pilotsRoutes);
-    // this.app.use('/api/driver-induction', driverInductionRoutes);
-
-    // Test pilot endpoints with direct database service calls
-    this.app.get('/api/pilots', async (req, res) => {
-      try {
-        const DatabaseService = require('./services/databaseService');
-        const databaseService = new DatabaseService();
-        
-        const pilots = await databaseService.findAll('Pilot', { isActive: true });
-        
-        res.status(200).json({
-          success: true,
-          message: 'Pilots retrieved successfully',
-          data: pilots
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          message: 'Error fetching pilots',
-          error: error.message
-        });
-      }
-    });
-
-    this.app.post('/api/pilots', async (req, res) => {
-      try {
-        const DatabaseService = require('./services/databaseService');
-        const databaseService = new DatabaseService();
-        
-        const pilotData = {
-          ...req.body,
-          createdBy: req.user?.id || 'system',
-          updatedBy: req.user?.id || 'system'
-        };
-        
-        const pilot = await databaseService.createDocument('Pilot', pilotData);
-        
-        res.status(201).json({
-          success: true,
-          message: 'Pilot created successfully',
-          data: pilot
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          message: 'Error creating pilot',
-          error: error.message
-        });
-      }
-    });
-
-    this.app.get('/api/driver-induction/pilots', async (req, res) => {
-      try {
-        const DatabaseService = require('./services/databaseService');
-        const databaseService = new DatabaseService();
-        
-        const {
-          page = 1,
-          limit = 20,
-          search = ''
-        } = req.query;
-
-        const query = { isActive: true };
-        
-        if (search) {
-          query.$or = [
-            { fullName: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } },
-            { pilotId: { $regex: search, $options: 'i' } }
-          ];
-        }
-
-        const result = await databaseService.getPaginatedResults(
-          'Pilot',
-          query,
-          {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            sortBy: 'createdAt',
-            sortOrder: 'desc'
-          }
-        );
-
-        res.status(200).json({
-          success: true,
-          message: 'Driver induction pilots retrieved successfully',
-          data: {
-            pilots: result.data,
-            total: result.pagination.total,
-            page: result.pagination.page,
-            limit: result.pagination.limit,
-            totalPages: result.pagination.totalPages
-          }
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          message: 'Error fetching driver induction pilots',
-          error: error.message
-        });
-      }
-    });
+    this.app.use('/api/pilots', pilotsRoutes);
+    this.app.use('/api/driver-induction', driverInductionRoutes);
 
     // File upload placeholder
     this.app.post('/api/upload', (req, res) => {
@@ -223,6 +124,9 @@ class App {
     try {
       // Connect to database
       await database.connect();
+      
+      // Initialize database service schemas
+      await this.databaseService.initialize();
 
       // Start server
       const server = this.app.listen(config.port, () => {

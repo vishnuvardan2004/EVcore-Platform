@@ -989,7 +989,6 @@ export const EmployeeManagement: React.FC = () => {
                 <SelectItem value="super_admin">Super Admin</SelectItem>
                 <SelectItem value="admin">Administrator</SelectItem>
                 <SelectItem value="employee">Employee</SelectItem>
-                <SelectItem value="pilot">Pilot</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1277,7 +1276,6 @@ export const EmployeeManagement: React.FC = () => {
                       <SelectItem value="super_admin">Super Admin</SelectItem>
                       <SelectItem value="admin">Administrator</SelectItem>
                       <SelectItem value="employee">Employee</SelectItem>
-                      <SelectItem value="pilot">Pilot</SelectItem>
                     </SelectContent>
                   </Select>
                   {formErrors.role && (
