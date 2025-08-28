@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "name": "evcore-platform",
+  "buildCommand": "cd EVcore && npm ci --legacy-peer-deps && npm run build",
+  "outputDirectory": "EVcore/dist",
+  "installCommand": "cd EVcore && npm ci --legacy-peer-deps",
+  "devCommand": "cd EVcore && npm run dev",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
