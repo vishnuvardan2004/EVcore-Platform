@@ -9,6 +9,7 @@ import {
   Globe,
   FileCheck,
   LogOut,
+  User,
   Car,
   MapPin,
   TrendingUp,
@@ -202,6 +203,13 @@ const chargingItems = [
 ];
 
 const systemItems = [
+  {
+    title: "My Account",
+    url: "/my-account",
+    icon: User,
+    description: "Account settings & password",
+    moduleId: "dashboard" // Available to all authenticated users
+  },
   {
     title: "Language",
     url: "/language",

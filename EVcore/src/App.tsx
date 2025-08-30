@@ -39,6 +39,7 @@ import SmartWidgetsDashboard from './features/dashboard/pages/SmartWidgetsDashbo
 import GlobalReports from './features/reports/pages/GlobalReports';
 import LanguageSelector from './features/admin/pages/LanguageSelector';
 import AuditLogs from './features/admin/pages/AuditLogs';
+import MyAccount from './pages/MyAccount';
 
 const AppContent = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -83,6 +84,7 @@ const AppContent = () => {
         <MainLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/my-account" element={<MyAccount />} />
             <Route path="/smart-widgets" element={<SmartWidgetsDashboard />} />
             <Route path="/global-reports" element={<GlobalReports />} />
             <Route path="/language" element={<LanguageSelector />} />

@@ -8,6 +8,8 @@ interface User {
   email: string;
   role: 'super_admin' | 'admin' | 'employee' | 'pilot';
   permissions?: string[];
+  isTemporaryPassword?: boolean;
+  mustChangePassword?: boolean;
 }
 
 // Auth context interface
