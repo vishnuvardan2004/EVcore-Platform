@@ -206,42 +206,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const canAccessFeature = (featureId: string): boolean => {
     if (!user) return false;
     
-    // New 6-module access control system
     const roleFeatureAccess: Record<string, string[]> = {
-      super_admin: [
-        // Full access to all 6 core modules
-        'vehicle_deployment', 'smart_bookings', 'data_hub', 
-        'driver_onboarding', 'trip_analytics', 'energy_management',
-        // Administrative modules
-        'audit_logs', 'admin_settings',
-        // Legacy features
-        'dashboard', 'database_management', 'global_reports'
-      ],
-      admin: [
-        // All 6 core modules except audit logs
-        'vehicle_deployment', 'smart_bookings', 'data_hub',
-        'driver_onboarding', 'trip_analytics', 'energy_management',
-        // Limited administrative access
-        'admin_settings',
-        // Legacy features
-        'dashboard', 'database_management', 'global_reports'
-      ],
-      employee: [
-        // 5 out of 6 core modules (no data_hub)
-        'vehicle_deployment', 'smart_bookings', 
-        'driver_onboarding', 'trip_analytics', 'energy_management',
-        // Limited legacy access
-        'dashboard'
-      ],
-      pilot: [
-        // Only 2 core modules
-        'trip_analytics', 'energy_management',
-        // Basic dashboard access
-        'dashboard'
-      ]
+      super_admin: ['all'], // Super admin can access everything
+      admin: ['dashboard', 'employees', 'vehicles', 'reports', 'settings'],
+      employee: ['dashboard', 'vehicles', 'reports'],
+      pilot: ['dashboard', 'vehicles', 'trips']
     };
 
-    return roleFeatureAccess[user.role]?.includes(featureId) || false;
+    return roleFeatureAccess[user.role]?.includes(featureId) || 
+           roleFeatureAccess[user.role]?.includes('all') || 
+           false;
   };
 
   const isAuthenticated = user !== null;

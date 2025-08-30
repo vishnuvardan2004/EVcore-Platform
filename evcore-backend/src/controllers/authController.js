@@ -137,10 +137,64 @@ const login = catchAsync(async (req, res, next) => {
   }
 
   // 2) Check if user exists and password is correct
+  console.log('🔍 Pre-Query Debug:', {
+    email: email,
+    emailType: typeof email,
+    userModel: !!User,
+    findByEmailOrMobileMethod: typeof User.findByEmailOrMobile,
+    mongooseConnectionState: require('mongoose').connection.readyState,
+    mongooseDbName: require('mongoose').connection.name,
+    mongooseHost: require('mongoose').connection.host
+  });
+
+  // Test direct query first
+  console.log('🔍 Testing direct User.findOne...');
+  const directUser = await User.findOne({ email: email });
+  console.log('🔍 Direct findOne result:', !!directUser);
+
+  // Now test findByEmailOrMobile
+  console.log('🔍 Testing User.findByEmailOrMobile...');
   const user = await User.findByEmailOrMobile(email).select('+password +active +loginAttempts +lockUntil');
 
+  console.log('🔍 Login Attempt - Detailed Debug:', {
+    searchEmail: email,
+    userFound: !!user,
+    directUserFound: !!directUser,
+    userEmail: user ? user.email : 'N/A',
+    userRole: user ? user.role : 'N/A',
+    userActive: user ? user.active : 'N/A',
+    providedPassword: password,
+    databasePasswordLength: user ? user.password.length : 'N/A',
+    isTemporaryPassword: user ? user.isTemporaryPassword : 'N/A',
+    mustChangePassword: user ? user.mustChangePassword : 'N/A',
+    evzipId: user ? user.evzipId : 'N/A',
+    username: user ? user.username : 'N/A'
+  });
+
+  // Additional check: Let's also search for users with similar emails
   if (!user) {
-    return next(new AppError('Incorrect email or password', 401));
+    const allUsers = await User.find({}, 'email username evzipId role').limit(5);
+    console.log('🔍 All Users in Database (first 5):', allUsers.map(u => ({
+      email: u.email,
+      username: u.username,
+      evzipId: u.evzipId,
+      role: u.role
+    })));
+  }
+
+  if (!user) {
+    // Add debug information to the response in development mode
+    const debugInfo = {
+      searchEmail: email,
+      userModel: !!User,
+      findByEmailOrMobileMethod: typeof User.findByEmailOrMobile,
+      directUserFound: !!directUser,
+      mongooseConnectionState: require('mongoose').connection.readyState,
+      mongooseDbName: require('mongoose').connection.name,
+      mongooseHost: require('mongoose').connection.host
+    };
+    
+    return next(new AppError(`Incorrect email or password [DEBUG: ${JSON.stringify(debugInfo)}]`, 401));
   }
 
   // 3) Check if account is locked
@@ -155,6 +209,16 @@ const login = catchAsync(async (req, res, next) => {
 
   // 5) Verify password
   const isPasswordCorrect = await user.correctPassword(password, user.password);
+
+  console.log('🔐 Password Verification:', {
+    email: user.email,
+    role: user.role,
+    providedPassword: password,
+    storedPasswordHash: user.password.substring(0, 20) + '...',
+    passwordCorrect: isPasswordCorrect,
+    isTemporaryPassword: user.isTemporaryPassword,
+    mustChangePassword: user.mustChangePassword
+  });
 
   if (!isPasswordCorrect) {
     // Increment login attempts

@@ -13,25 +13,52 @@ export const useRoleAccess = () => {
   const canPerformAction = (featureId: string, action: 'view' | 'create' | 'edit' | 'delete' | 'export'): boolean => {
     if (!user || !canAccessFeature(featureId)) return false;
     
-    // Super admin and admin can do everything
-    if (user.role === 'super_admin' || user.role === 'admin') return true;
+    // Super admin can do everything
+    if (user.role === 'super_admin') return true;
     
-    // Define action permissions by role and feature
+    // Define action permissions by role and feature for the new 6-module system
     const actionPermissions = {
+      'admin': {
+        // Core 6 Platform Modules
+        'vehicle_deployment': ['view', 'create', 'edit', 'delete', 'export'],
+        'smart_bookings': ['view', 'create', 'edit', 'delete', 'export'],
+        'data_hub': ['view', 'create', 'edit', 'delete', 'export'],
+        'driver_onboarding': ['view', 'create', 'edit', 'delete', 'export'],
+        'trip_analytics': ['view', 'create', 'edit', 'delete', 'export'],
+        'energy_management': ['view', 'create', 'edit', 'delete', 'export'],
+        // Administrative modules
+        'admin_settings': ['view', 'create', 'edit'],
+        // Legacy modules
+        'dashboard': ['view'],
+        'database_management': ['view', 'create', 'edit', 'export'],
+        'global_reports': ['view', 'export']
+      },
       'employee': {
-        'vehicle-deployment': ['view', 'create', 'edit', 'export'],
-        'database-management': ['view', 'edit', 'export'],
-        'driver-induction': ['view', 'create', 'edit', 'export'],
-        'trip-details': ['view', 'create', 'edit', 'export'],
-        'offline-bookings': ['view', 'create', 'edit', 'delete', 'export'],
-        'charging-tracker': ['view', 'create', 'edit', 'export'],
-        'attendance': ['view', 'edit', 'export'],
-        'reports': ['view', 'export']
+        // Core 6 Platform Modules - Employee permissions (5 out of 6)
+        'vehicle_deployment': ['view', 'create', 'edit', 'export'],
+        'smart_bookings': ['view', 'create', 'edit', 'export'],
+        'driver_onboarding': ['view', 'create', 'edit', 'export'],
+        'trip_analytics': ['view', 'export'],
+        'energy_management': ['view', 'create', 'edit', 'export'],
+        // Legacy modules
+        'dashboard': ['view'],
+        'vehicle-deployment': ['view', 'create', 'edit', 'export'], // backward compatibility
+        'driver-induction': ['view', 'create', 'edit', 'export'], // backward compatibility
+        'trip-details': ['view', 'create', 'edit', 'export'], // backward compatibility
+        'offline-bookings': ['view', 'create', 'edit', 'delete', 'export'], // backward compatibility
+        'charging-tracker': ['view', 'create', 'edit', 'export'], // backward compatibility
+        'attendance': ['view', 'edit', 'export'], // backward compatibility
+        'reports': ['view', 'export'] // backward compatibility
       },
       'pilot': {
-        'vehicle-deployment': ['view'],
-        'trip-details': ['view'],
-        'charging-tracker': ['view']
+        // Core 6 Platform Modules - Pilot permissions (2 out of 6)
+        'trip_analytics': ['view', 'export'],
+        'energy_management': ['view', 'export'],
+        // Legacy modules
+        'dashboard': ['view'],
+        'vehicle-deployment': ['view'], // backward compatibility
+        'trip-details': ['view'], // backward compatibility
+        'charging-tracker': ['view'] // backward compatibility
       }
     };
     

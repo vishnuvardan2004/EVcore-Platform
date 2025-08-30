@@ -23,8 +23,8 @@ const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   
   // Database Configuration
-  mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/evcore_dev',
-  mongoTestUri: process.env.MONGO_TEST_URI || 'mongodb://localhost:27017/evcore_test',
+  mongoUri: process.env.MONGO_URI || 'mongodb+srv://vishnuvardan2004:Jaya.988@evcore.gjcfg9u.mongodb.net/evcore',
+  mongoTestUri: process.env.MONGO_TEST_URI || 'mongodb+srv://vishnuvardan2004:Jaya.988@evcore.gjcfg9u.mongodb.net/evcore_test',
   
   // JWT Configuration
   jwt: {

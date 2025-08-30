@@ -46,12 +46,12 @@ const verifyToken = catchAsync(async (req, res, next) => {
   next();
 });
 
-// Authorize based on roles
+// Legacy authorize function for backward compatibility
 const authorize = (...roles) => {
   return (req, res, next) => {
     // Flatten the roles array in case it's passed as a single array argument
     const flatRoles = roles.flat();
-    
+
     console.log('🔐 Authorization check:', {
       userRole: req.user?.role,
       userEmail: req.user?.email,
@@ -78,8 +78,9 @@ const authorize = (...roles) => {
   };
 };
 
-// Check if user can access specific modules based on role permissions
+// DEPRECATED: Legacy module access check - use moduleAuth.js instead
 const checkModuleAccess = (moduleName) => {
+  console.warn(`⚠️  DEPRECATED: checkModuleAccess('${moduleName}') - Use requireSpecificModule from moduleAuth.js instead`);
   return catchAsync(async (req, res, next) => {
     const user = req.user;
     
@@ -107,8 +108,9 @@ const checkModuleAccess = (moduleName) => {
   });
 };
 
-// Check specific permission within a module
+// DEPRECATED: Legacy permission check - use moduleAuth.js instead
 const checkPermission = (permission) => {
+  console.warn(`⚠️  DEPRECATED: checkPermission('${permission}') - Use requireSpecificModule with permission parameter instead`);
   return (req, res, next) => {
     if (!req.modulePermissions || !req.modulePermissions.includes(permission)) {
       return next(new AppError(`Insufficient permissions for ${permission}`, 403));
@@ -143,7 +145,7 @@ const optionalAuth = catchAsync(async (req, res, next) => {
 module.exports = {
   verifyToken,
   authorize,
-  checkModuleAccess,
-  checkPermission,
+  checkModuleAccess, // DEPRECATED
+  checkPermission,   // DEPRECATED
   optionalAuth,
 };

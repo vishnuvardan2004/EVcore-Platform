@@ -1,20 +1,21 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import { config } from './config/environment'
 
 console.log('EVCORE app is starting...');
 
 // Clean up any invalid tokens on app startup
 const cleanupInvalidTokens = () => {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem(config.TOKEN_STORAGE_KEY);
   if (token) {
     try {
       // Check if it's a valid JWT format (3 parts separated by dots)
       const parts = token.split('.');
       if (parts.length !== 3) {
         console.log('🧹 Removing invalid token format on startup');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('refreshToken');
+        localStorage.removeItem(config.TOKEN_STORAGE_KEY);
+        localStorage.removeItem(config.REFRESH_TOKEN_STORAGE_KEY);
         return;
       }
       
@@ -24,13 +25,13 @@ const cleanupInvalidTokens = () => {
       
       if (payload.exp && now >= payload.exp) {
         console.log('🧹 Removing expired token on startup');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('refreshToken');
+        localStorage.removeItem(config.TOKEN_STORAGE_KEY);
+        localStorage.removeItem(config.REFRESH_TOKEN_STORAGE_KEY);
       }
     } catch (error) {
       console.log('🧹 Removing malformed token on startup');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
+      localStorage.removeItem(config.TOKEN_STORAGE_KEY);
+      localStorage.removeItem(config.REFRESH_TOKEN_STORAGE_KEY);
     }
   }
 };

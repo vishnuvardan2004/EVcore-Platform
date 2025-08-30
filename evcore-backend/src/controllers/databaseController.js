@@ -1,5 +1,6 @@
 const DatabaseService = require('../services/databaseService');
 const auditService = require('../services/auditService');
+const AccountCreationService = require('../services/accountCreationService');
 const { validationResult } = require('express-validator');
 const { catchAsync, AppError } = require('../middleware/errorHandler');
 const logger = require('../utils/logger');
@@ -198,11 +199,49 @@ class DatabaseController {
     try {
       const { document } = req.body;
       
+      // Auto-generate Employee ID if not provided
+      if (platform.toLowerCase() === 'employee' && !document.employeeId) {
+        document.employeeId = await DatabaseController.generateEmployeeId();
+        logger.info(`🆔 Auto-generated Employee ID: ${document.employeeId}`);
+      }
+      
       const createdDocument = await databaseService.createDocument(
         platform,
         document,
         req.user._id
       );
+      
+      let accountCreationResult = null;
+      
+      // Automatically create user account for Employee or Pilot
+      if (platform.toLowerCase() === 'employee' || platform.toLowerCase() === 'pilot') {
+        try {
+          if (platform.toLowerCase() === 'employee') {
+            accountCreationResult = await AccountCreationService.createEmployeeAccount(
+              createdDocument,
+              req.user._id
+            );
+          } else if (platform.toLowerCase() === 'pilot') {
+            accountCreationResult = await AccountCreationService.createPilotAccount(
+              createdDocument,
+              req.user._id
+            );
+          }
+          
+          logger.info(`User account creation result for ${platform}:`, {
+            success: accountCreationResult?.success,
+            evzipId: accountCreationResult?.credentials?.evzipId
+          });
+          
+        } catch (accountError) {
+          // Log error but don't fail the main operation
+          logger.error(`Failed to create user account for ${platform}:`, accountError);
+          accountCreationResult = {
+            success: false,
+            error: accountError.message
+          };
+        }
+      }
       
       // Log audit action
       await auditService.logAction({
@@ -214,21 +253,41 @@ class DatabaseController {
         documentId: createdDocument._id.toString(),
         details: { 
           documentFields: Object.keys(document),
-          documentSize: JSON.stringify(document).length
+          documentSize: JSON.stringify(document).length,
+          accountCreated: accountCreationResult?.success || false,
+          evzipId: accountCreationResult?.credentials?.evzipId || null
         },
         metadata: { performanceTime: Date.now() - startTime },
         result: { success: true, recordsAffected: 1 },
         req
       });
 
+      // Prepare response data
+      const responseData = {
+        document: createdDocument,
+        platform,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Include account creation info in response if applicable
+      if (accountCreationResult) {
+        responseData.userAccount = {
+          created: accountCreationResult.success,
+          credentials: accountCreationResult.success ? {
+            evzipId: accountCreationResult.credentials.evzipId,
+            username: accountCreationResult.credentials.username,
+            email: accountCreationResult.credentials.email,
+            defaultPassword: accountCreationResult.credentials.defaultPassword,
+            isTemporaryPassword: accountCreationResult.credentials.isTemporaryPassword
+          } : null,
+          error: accountCreationResult.success ? null : accountCreationResult.error
+        };
+      }
+
       res.status(201).json({
         success: true,
-        data: {
-          document: createdDocument,
-          platform,
-          timestamp: new Date().toISOString()
-        },
-        message: 'Document created successfully'
+        data: responseData,
+        message: `${platform} created successfully${accountCreationResult?.success ? ' with user account' : ''}`
       });
     } catch (error) {
       await auditService.logAction({
@@ -697,6 +756,46 @@ class DatabaseController {
       data: stats
     });
   });
+
+  /**
+   * Generate unique Employee ID
+   * Format: EMP + YYYY + MM + DD + XXX (sequential number)
+   * Example: EMP20240830001
+   */
+  static async generateEmployeeId() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const datePrefix = `EMP${year}${month}${day}`;
+    
+    try {
+      // Find the highest employee ID for today
+      const existingEmployees = await databaseService.getDocuments(
+        'employee',
+        { 
+          employeeId: { $regex: `^${datePrefix}` } 
+        },
+        { employeeId: -1 }, // Sort by employeeId descending
+        1 // Limit to 1 result
+      );
+      
+      let sequence = 1;
+      if (existingEmployees && existingEmployees.length > 0) {
+        const lastId = existingEmployees[0].employeeId;
+        const lastSequence = parseInt(lastId.slice(-3));
+        sequence = lastSequence + 1;
+      }
+      
+      const paddedSequence = String(sequence).padStart(3, '0');
+      return `${datePrefix}${paddedSequence}`;
+      
+    } catch (error) {
+      logger.error('Error generating Employee ID:', error);
+      // Fallback to timestamp-based ID
+      return `EMP${Date.now().toString().slice(-9)}`;
+    }
+  }
 }
 
 module.exports = DatabaseController;

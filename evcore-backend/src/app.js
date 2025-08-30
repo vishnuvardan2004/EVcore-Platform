@@ -22,6 +22,16 @@ const employeeRoutes = require('./routes/employees');
 const databaseMgmtRoutes = require('./routes/databaseMgmt');
 const pilotsRoutes = require('./routes/pilots');
 const driverInductionRoutes = require('./routes/driverInduction');
+const userAccountRoutes = require('./routes/userAccounts');
+
+// New 6 Core Platform Module Routes
+const vehicleDeploymentRoutes = require('./routes/vehicleDeployment');
+const smartBookingsRoutes = require('./routes/smartBookings');
+const dataHubRoutes = require('./routes/dataHub');
+const driverOnboardingRoutes = require('./routes/driverOnboarding');
+const tripAnalyticsRoutes = require('./routes/tripAnalytics');
+const energyManagementRoutes = require('./routes/energyManagement');
+const auditLogsRoutes = require('./routes/auditLogs');
 
 class App {
   constructor() {
@@ -95,12 +105,140 @@ class App {
       });
     });
 
+    // 🚨 DEVELOPMENT ONLY: Debug endpoint to get user credentials
+    if (config.isDevelopment) {
+      this.app.get('/debug/user-credentials/:email', async (req, res) => {
+        try {
+          const User = require('./models/User');
+          const user = await User.findOne({ email: req.params.email });
+          
+          if (!user) {
+            return res.status(404).json({
+              success: false,
+              message: 'User not found with that email'
+            });
+          }
+
+          const defaultPassword = process.env.DEFAULT_USER_PASSWORD || 'Welcome123!';
+
+          res.status(200).json({
+            success: true,
+            message: '🔐 User Credentials (DEVELOPMENT ONLY)',
+            data: {
+              evzipId: user.evzipId,
+              username: user.username,
+              email: user.email,
+              role: user.role,
+              defaultPassword: defaultPassword,
+              isTemporaryPassword: user.isTemporaryPassword,
+              mustChangePassword: user.mustChangePassword,
+              loginInstructions: {
+                step1: `Use email "${user.email}" or username "${user.username}" with password "${defaultPassword}"`,
+                step2: 'System will force you to change password on first login',
+                step3: 'After password change, you can access the system normally'
+              }
+            }
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            message: 'Error retrieving user credentials',
+            error: error.message
+          });
+        }
+      });
+
+      // 🚨 DEVELOPMENT ONLY: List all users in database
+      this.app.get('/debug/all-users', async (req, res) => {
+        try {
+          const User = require('./models/User');
+          const users = await User.find({}, 'email username evzipId role isTemporaryPassword mustChangePassword createdAt').limit(10);
+          
+          res.status(200).json({
+            success: true,
+            message: '📋 All Users in Database (DEVELOPMENT ONLY)',
+            data: {
+              totalUsers: users.length,
+              users: users.map(user => ({
+                email: user.email,
+                username: user.username,
+                evzipId: user.evzipId,
+                role: user.role,
+                isTemporaryPassword: user.isTemporaryPassword,
+                mustChangePassword: user.mustChangePassword,
+                createdAt: user.createdAt
+              }))
+            }
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            message: 'Error retrieving users',
+            error: error.message
+          });
+        }
+      });
+
+      // 🚨 DEVELOPMENT ONLY: Test password hash
+      this.app.post('/debug/test-password', async (req, res) => {
+        try {
+          const { email, password } = req.body;
+          const User = require('./models/User');
+          const user = await User.findOne({ email }).select('+password');
+          
+          if (!user) {
+            return res.status(404).json({
+              success: false,
+              message: 'User not found'
+            });
+          }
+
+          const isMatch = await user.correctPassword(password, user.password);
+          
+          res.status(200).json({
+            success: true,
+            message: '🔐 Password Test (DEVELOPMENT ONLY)',
+            data: {
+              userEmail: user.email,
+              testPassword: password,
+              passwordMatches: isMatch,
+              userRole: user.role,
+              isTemporaryPassword: user.isTemporaryPassword
+            }
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            message: 'Error testing password',
+            error: error.message
+          });
+        }
+      });
+    }
+
     // API routes
     this.app.use('/api/auth', authRoutes);
+    
+    // Test route to verify backend is running current code
+    const testRoutes = require('./routes/test');
+    this.app.use('/api/test', testRoutes);
+    
     this.app.use('/api/employees', employeeRoutes);
     this.app.use('/api/database-mgmt', databaseMgmtRoutes);
     this.app.use('/api/pilots', pilotsRoutes);
     this.app.use('/api/driver-induction', driverInductionRoutes);
+    this.app.use('/api/user-accounts', userAccountRoutes);
+
+    // 🚀 NEW: Core 6 Platform Module Routes with RBAC
+    this.app.use('/api/vehicle-deployment', vehicleDeploymentRoutes);
+    this.app.use('/api/smart-bookings', smartBookingsRoutes);
+    this.app.use('/api/data-hub', dataHubRoutes);
+    this.app.use('/api/driver-onboarding', driverOnboardingRoutes);
+    this.app.use('/api/trip-analytics', tripAnalyticsRoutes);
+    this.app.use('/api/energy-management', energyManagementRoutes);
+    
+    // 🔒 RESTRICTED: Audit Logs (Super Admin Only)
+    this.app.use('/api/audit-logs', auditLogsRoutes);
 
     // File upload placeholder
     this.app.post('/api/upload', (req, res) => {

@@ -1,6 +1,8 @@
 const { catchAsync, AppError } = require('../middleware/errorHandler');
 const DatabaseService = require('../services/databaseService');
 const AuditService = require('../services/auditService');
+const User = require('../models/User');
+const RolePermission = require('../models/RolePermission');
 const logger = require('../utils/logger');
 
 const databaseService = DatabaseService.getInstance();
@@ -69,7 +71,7 @@ const getPilot = catchAsync(async (req, res, next) => {
   });
 });
 
-// @desc    Create new pilot (Note: Use driver induction endpoint for complete pilot creation with user account)
+// @desc    Create new pilot (now automatically creates user account for authentication)
 // @route   POST /api/pilots
 // @access  Private
 const createPilot = catchAsync(async (req, res, next) => {
@@ -79,7 +81,68 @@ const createPilot = catchAsync(async (req, res, next) => {
     updatedBy: req.user.id
   };
 
+  // Create pilot record first
   const pilot = await databaseService.createDocument('Pilot', pilotData);
+
+  // Automatically create User account for authentication
+  try {
+    // Check if user account already exists
+    const existingUser = await User.findOne({ email: pilotData.email });
+    
+    if (!existingUser) {
+      // Generate unique evzipId and username
+      const timestamp = Date.now().toString().slice(-6);
+      const username = pilotData.fullName ? pilotData.fullName.toLowerCase().replace(/\s+/g, '') + 'pilot' : 'pilot' + timestamp;
+      
+      const userData = {
+        fullName: pilotData.fullName,
+        email: pilotData.email,
+        mobileNumber: pilotData.mobileNumber || '0000000000', // Default if not provided
+        username: username.substring(0, 20), // Limit username length
+        evzipId: pilot.pilotId || `EVZ_${timestamp}`,
+        role: 'pilot',
+        password: 'Pilot123', // Default password
+        passwordConfirm: 'Pilot123',
+        active: true,
+        isTemporaryPassword: true,
+        mustChangePassword: true,
+        department: 'Operations',
+        designation: 'Pilot/Driver',
+        licenseNumber: pilotData.licenseNumber,
+        licenseExpiry: pilotData.licenseExpiry,
+        experienceYears: pilotData.experience || 0,
+        vehicleTypes: pilotData.vehicleTypes || ['EV'],
+        emergencyContact: {
+          name: 'Emergency Contact',
+          relationship: 'Family',
+          phone: pilotData.mobileNumber || '0000000000'
+        },
+        createdBy: req.user.id
+      };
+
+      const user = await User.create(userData);
+      
+      logger.info(`User account created automatically for pilot: ${user.email}`);
+
+      // Create default role permissions if they don't exist
+      let rolePermissions = await RolePermission.findOne({ role: 'pilot' });
+      if (!rolePermissions) {
+        const defaultPermissions = RolePermission.getDefaultPermissions('pilot');
+        if (defaultPermissions) {
+          rolePermissions = await RolePermission.create({
+            role: 'pilot',
+            modules: defaultPermissions.modules,
+            createdBy: user._id
+          });
+        }
+      }
+    } else {
+      logger.info(`User account already exists for pilot: ${existingUser.email}`);
+    }
+  } catch (userError) {
+    // Log the error but don't fail the pilot creation
+    logger.error(`Failed to create user account for pilot ${pilotData.email}: ${userError.message}`);
+  }
 
   // Log audit trail
   await AuditService.logAction({
@@ -96,7 +159,7 @@ const createPilot = catchAsync(async (req, res, next) => {
 
   res.status(201).json({
     success: true,
-    message: 'Pilot created successfully',
+    message: 'Pilot created successfully with user account',
     data: pilot
   });
 });

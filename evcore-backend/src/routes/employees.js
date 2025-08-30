@@ -23,14 +23,17 @@ const employeeValidation = [
     .withMessage('Please provide a valid mobile number'),
   
   body('password')
+    .optional()
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
   
   body('passwordConfirm')
+    .optional()
     .custom((value, { req }) => {
-      if (value !== req.body.password) {
+      // Only validate if password is provided
+      if (req.body.password && value !== req.body.password) {
         throw new Error('Password confirmation does not match password');
       }
       return true;
@@ -200,28 +203,68 @@ router.post('/',
         });
       }
 
-      // Create new employee
+      // Determine default password based on role if not provided
+      const userRole = role || 'employee';
+      let defaultPassword = password;
+      let isTemporaryPassword = false;
+
+      if (!password) {
+        // Use role-based default passwords
+        switch (userRole) {
+          case 'pilot':
+            defaultPassword = 'Pilot123';
+            break;
+          case 'admin':
+            defaultPassword = 'Admin123';
+            break;
+          case 'super_admin':
+            defaultPassword = 'SuperAdmin123';
+            break;
+          default:
+            defaultPassword = 'Employee123';
+        }
+        isTemporaryPassword = true;
+      }
+
+      // Create new employee with enhanced data
       const newEmployee = await User.create({
         fullName,
         email,
         mobileNumber,
-        password,
-        passwordConfirm,
-        role: role || 'employee',
+        password: defaultPassword,
+        passwordConfirm: defaultPassword,
+        role: userRole,
         department,
         designation,
         employeeId,
-        salary
+        salary,
+        active: true,
+        isTemporaryPassword,
+        mustChangePassword: isTemporaryPassword
       });
 
       // Remove password from response
       newEmployee.password = undefined;
       newEmployee.refreshTokens = undefined;
 
+      // Create response with credentials info for default passwords
+      const responseData = {
+        user: newEmployee,
+        loginCredentials: isTemporaryPassword ? {
+          email: email,
+          defaultPassword: defaultPassword,
+          isTemporary: true,
+          mustChangeOnFirstLogin: true,
+          note: 'User will be forced to change password on first login'
+        } : null
+      };
+
       res.status(201).json({
         success: true,
-        message: 'Employee created successfully',
-        data: newEmployee
+        message: isTemporaryPassword 
+          ? `Employee created successfully with default password for role: ${userRole}`
+          : 'Employee created successfully with provided password',
+        data: responseData
       });
     } catch (error) {
       res.status(500).json({

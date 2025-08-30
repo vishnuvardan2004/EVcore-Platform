@@ -28,7 +28,7 @@ const subPlatforms: SubPlatform[] = [
     description: 'Real-time fleet tracking and deployment management',
     route: '/vehicle-tracker',
     isActive: true,
-    featureId: 'vehicle-deployment',
+    featureId: 'vehicle_deployment', // Updated to match RBAC system
     gradient: 'from-blue-600 via-blue-500 to-cyan-400',
     icon: '🚗',
     category: 'core',
@@ -40,7 +40,7 @@ const subPlatforms: SubPlatform[] = [
     description: 'Intelligent booking system with offline capabilities',
     route: '/offline-bookings',
     isActive: true,
-    featureId: 'offline-bookings',
+    featureId: 'smart_bookings', // Updated to match RBAC system
     gradient: 'from-emerald-600 via-emerald-500 to-teal-400',
     icon: '📱',
     category: 'core',
@@ -52,7 +52,7 @@ const subPlatforms: SubPlatform[] = [
     description: 'Centralized data management and analytics platform',
     route: '/database',
     isActive: true,
-    featureId: 'database-management',
+    featureId: 'data_hub', // Updated to match RBAC system
     gradient: 'from-purple-600 via-purple-500 to-indigo-400',
     icon: '🗃️',
     category: 'management',
@@ -64,7 +64,7 @@ const subPlatforms: SubPlatform[] = [
     description: 'Streamlined driver registration and verification',
     route: '/driver-induction',
     isActive: true,
-    featureId: 'driver-induction',
+    featureId: 'driver_onboarding', // Updated to match RBAC system
     gradient: 'from-orange-600 via-orange-500 to-yellow-400',
     icon: '👤',
     category: 'management',
@@ -76,7 +76,7 @@ const subPlatforms: SubPlatform[] = [
     description: 'Comprehensive trip monitoring and performance insights',
     route: '/trip-details',
     isActive: true,
-    featureId: 'trip-details',
+    featureId: 'trip_analytics', // Updated to match RBAC system
     gradient: 'from-pink-600 via-pink-500 to-rose-400',
     icon: '📊',
     category: 'analytics',
@@ -88,7 +88,7 @@ const subPlatforms: SubPlatform[] = [
     description: 'Advanced charging optimization and energy monitoring',
     route: '/charging-tracker',
     isActive: true,
-    featureId: 'charging-tracker',
+    featureId: 'energy_management', // Updated to match RBAC system
     gradient: 'from-green-600 via-green-500 to-lime-400',
     icon: '⚡',
     category: 'operations',
@@ -99,8 +99,8 @@ const subPlatforms: SubPlatform[] = [
     title: 'Workforce',
     description: 'Smart attendance and workforce management',
     route: '/attendance',
-    isActive: false,
-    featureId: 'attendance',
+    isActive: false, // Disabled for now
+    featureId: 'workforce_management',
     gradient: 'from-slate-600 via-slate-500 to-gray-400',
     icon: '🕒',
     category: 'management',
@@ -126,10 +126,18 @@ const Dashboard = () => {
 
   // Filter platforms based on user role and permissions
   const accessiblePlatforms = useMemo(() => {
-    return subPlatforms.filter(platform => 
-      canAccessFeature(platform.featureId) && platform.isActive
-    );
-  }, [canAccessFeature]);
+    console.log('🔍 Dashboard filtering - User:', user);
+    console.log('🔍 Dashboard filtering - All platforms:', subPlatforms.map(p => ({ id: p.id, featureId: p.featureId, isActive: p.isActive })));
+    
+    const filtered = subPlatforms.filter(platform => {
+      const hasAccess = canAccessFeature(platform.featureId);
+      console.log(`🔍 Platform ${platform.title}: featureId="${platform.featureId}", hasAccess=${hasAccess}, isActive=${platform.isActive}`);
+      return hasAccess && platform.isActive;
+    });
+    
+    console.log('✅ Dashboard accessible platforms:', filtered.map(p => p.title));
+    return filtered;
+  }, [canAccessFeature, user]);
 
   const handleCardClick = (platform: SubPlatform) => {
     if (platform.isActive && canAccessFeature(platform.featureId)) {

@@ -213,7 +213,7 @@ export class DatabaseManagementService extends APIService {
   }
 
   protected getToken(): string | null {
-    return localStorage.getItem('authToken');
+    return localStorage.getItem(config.TOKEN_STORAGE_KEY);
   }
 
   // Platform management methods

@@ -53,7 +53,7 @@ class DatabaseService {
         // Primary identification
         fullName: { type: 'String', required: true, maxLength: 100 },
         email: { type: 'String', required: true },
-        employeeId: { type: 'String', required: true },
+        employeeId: { type: 'String', required: false }, // Optional - will auto-generate if not provided
         
         // Personal information
         firstName: { type: 'String' },
@@ -101,6 +101,10 @@ class DatabaseService {
         permissions: [{ type: 'String' }],
         lastLogin: { type: 'Date' },
         role: { type: 'String', default: 'employee' },
+        
+        // User account reference (for automatic account creation)
+        userAccountId: { type: 'ObjectId', ref: 'User' },
+        
         createdBy: { type: 'ObjectId', ref: 'User' },
         updatedBy: { type: 'ObjectId', ref: 'User' }
       },
@@ -110,7 +114,7 @@ class DatabaseService {
         { fields: { department: 1, isActive: 1 } }
       ],
       validation: {
-        required: ['fullName', 'email', 'employeeId', 'department', 'position'],
+        required: ['fullName', 'email', 'department', 'position'], // employeeId is auto-generated if not provided
         unique: ['email', 'employeeId']
       }
     };
@@ -134,6 +138,10 @@ class DatabaseService {
           address: { type: 'String' }
         },
         isActive: { type: 'Boolean', default: true },
+        
+        // User account reference (for automatic account creation)
+        userAccountId: { type: 'ObjectId', ref: 'User' },
+        
         createdBy: { type: 'ObjectId', ref: 'User' },
         updatedBy: { type: 'ObjectId', ref: 'User' }
       },
