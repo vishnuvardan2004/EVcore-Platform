@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Clock, 
   User, 
@@ -16,10 +17,15 @@ import {
   Mail,
   Calendar,
   Car,
-  FileText
+  FileText,
+  Copy,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
 import { TemporaryPilot } from '../../../types/pilot';
+import { tempPilotService } from '../../../services/database';
+import { driverInductionApi } from '../services/api';
 import { apiService } from '../../../services/api';
 
 interface QuickRegistrationProps {
@@ -33,6 +39,14 @@ export const QuickRegistration: React.FC<QuickRegistrationProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [credentials, setCredentials] = useState<{
+    email: string;
+    temporaryPassword: string;
+    pilotName: string;
+    pilotId: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
     mobileNumber: '',
@@ -42,9 +56,22 @@ export const QuickRegistration: React.FC<QuickRegistrationProps> = ({
     notes: ''
   });
 
-  const generateTempId = (): string => {
-    const timestamp = Date.now().toString().slice(-6);
-    return `TEMP-${timestamp}`;
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied!",
+        description: `${label} copied to clipboard`,
+        duration: 2000,
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy to clipboard",
+        variant: "destructive",
+        duration: 2000,
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,60 +89,105 @@ export const QuickRegistration: React.FC<QuickRegistrationProps> = ({
     setIsSubmitting(true);
 
     try {
-      const tempId = generateTempId();
-      
-      // Create pilot data for the backend
-      const pilotData = {
-        fullName: formData.fullName.trim(),
-        email: formData.emailId.trim() || `temp-${tempId.toLowerCase()}@evcore.temp`,
-        pilotId: tempId,
-        licenseNumber: `TEMP-LIC-${tempId}`,
-        licenseExpiry: new Date(Date.now() + formData.validityDays * 24 * 60 * 60 * 1000),
-        experience: 0,
-        rating: 3,
-        vehicleTypes: ['EV'],
-        currentStatus: 'available',
-        location: {
-          lat: 0,
-          lng: 0,
-          address: 'Not specified'
-        },
-        isActive: true,
-        // Additional temporary pilot fields
-        mobileNumber: formData.mobileNumber.trim(),
-        allowedRides: formData.allowedRides,
-        completedRides: 0,
-        expiryDate: new Date(Date.now() + formData.validityDays * 24 * 60 * 60 * 1000),
-        notes: formData.notes.trim() || undefined,
-        isTemporary: true
-      };
-
-      // Save to backend database
-      const response = await apiService.request<any>('/api/pilots', {
-        method: 'POST',
-        body: JSON.stringify(pilotData)
-      });
-
-      if (response.success) {
-        const tempPilot: TemporaryPilot = {
-          tempId: tempId,
+      // First try to register via backend API with account creation
+      try {
+        console.log('🚀 Registering temporary pilot with backend API...');
+        const backendResponse = await driverInductionApi.registerTemporaryPilot({
           fullName: formData.fullName.trim(),
           mobileNumber: formData.mobileNumber.trim(),
           emailId: formData.emailId.trim() || undefined,
           allowedRides: formData.allowedRides,
-          completedRides: 0,
-          expiryDate: new Date(Date.now() + formData.validityDays * 24 * 60 * 60 * 1000),
-          registeredBy: 'Current User', // TODO: Get from auth context
-          registrationDate: new Date(),
-          status: 'temporary',
+          validityDays: formData.validityDays,
           notes: formData.notes.trim() || undefined
-        };
-        
+        });
+
+        if (backendResponse.success && backendResponse.data) {
+          console.log('✅ Backend registration successful:', backendResponse.data);
+          
+          // Create temporary pilot data for local database
+          const tempPilotData = {
+            fullName: formData.fullName.trim(),
+            mobileNumber: formData.mobileNumber.trim(),
+            emailId: formData.emailId.trim() || undefined,
+            allowedRides: formData.allowedRides,
+            completedRides: 0,
+            expiryDate: new Date(backendResponse.data.pilot.expiryDate),
+            registeredBy: 'Current User', // TODO: Get from auth context
+            notes: formData.notes.trim() || undefined
+          };
+
+          // Save to local database with the backend-generated ID
+          await tempPilotService.createTemporaryPilotWithId(tempPilotData, backendResponse.data.pilot.tempId);
+          
+          // Get the created temporary pilot
+          const tempPilot = await tempPilotService.getTemporaryPilot(backendResponse.data.pilot.tempId);
+          
+          if (tempPilot) {
+            onRegistrationComplete(tempPilot);
+            
+            // Show success message with account credentials
+            toast({
+              title: 'Temporary Pilot Registered & Account Created',
+              description: `${tempPilot.fullName} (${tempPilot.tempId}) registered successfully!`,
+              duration: 4000,
+            });
+
+            // Show credentials in modal
+            if (backendResponse.data.userCreated && backendResponse.data.credentials) {
+              setCredentials({
+                email: backendResponse.data.credentials.email,
+                temporaryPassword: backendResponse.data.credentials.temporaryPassword,
+                pilotName: tempPilot.fullName,
+                pilotId: tempPilot.tempId
+              });
+              setShowCredentials(true);
+            }
+            
+            // Reset form
+            setFormData({
+              fullName: '',
+              mobileNumber: '',
+              emailId: '',
+              allowedRides: 5,
+              validityDays: 3,
+              notes: ''
+            });
+            
+            return; // Success, exit function
+          }
+        }
+      } catch (backendError) {
+        console.warn('⚠️ Backend registration failed, falling back to local-only registration:', backendError);
+      }
+
+      // Fallback: Local-only registration (if backend fails)
+      console.log('📱 Falling back to local-only temporary pilot registration...');
+      
+      // Create temporary pilot data for local database
+      const tempPilotData = {
+        fullName: formData.fullName.trim(),
+        mobileNumber: formData.mobileNumber.trim(),
+        emailId: formData.emailId.trim() || undefined,
+        allowedRides: formData.allowedRides,
+        completedRides: 0,
+        expiryDate: new Date(Date.now() + formData.validityDays * 24 * 60 * 60 * 1000),
+        registeredBy: 'Current User', // TODO: Get from auth context
+        notes: formData.notes.trim() || undefined
+      };
+
+      // Save to local database
+      const tempId = await tempPilotService.createTemporaryPilot(tempPilotData);
+      
+      // Get the created temporary pilot
+      const tempPilot = await tempPilotService.getTemporaryPilot(tempId);
+      
+      if (tempPilot) {
         onRegistrationComplete(tempPilot);
         
         toast({
-          title: 'Temporary Pilot Registered',
-          description: `${tempPilot.fullName} (${tempPilot.tempId}) has been saved to the database and can now take up to ${tempPilot.allowedRides} rides.`,
+          title: 'Temporary Pilot Registered (Local Only)',
+          description: `${tempPilot.fullName} (${tempPilot.tempId}) saved locally. Note: No user account created due to backend unavailability.`,
+          duration: 6000,
         });
 
         // Reset form
@@ -128,11 +200,11 @@ export const QuickRegistration: React.FC<QuickRegistrationProps> = ({
           notes: ''
         });
       } else {
-        throw new Error(response.message || 'Failed to save pilot');
+        throw new Error('Failed to create temporary pilot');
       }
 
     } catch (error: any) {
-      console.error('Error registering pilot:', error);
+      console.error('Error registering temporary pilot:', error);
       toast({
         title: 'Registration Failed',
         description: error.message || 'There was an error registering the temporary pilot. Please try again.',
@@ -370,6 +442,93 @@ export const QuickRegistration: React.FC<QuickRegistrationProps> = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* Credentials Modal */}
+      <Dialog open={showCredentials} onOpenChange={setShowCredentials}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Account Created Successfully
+            </DialogTitle>
+            <DialogDescription>
+              Login credentials have been generated for {credentials?.pilotName} ({credentials?.pilotId})
+            </DialogDescription>
+          </DialogHeader>
+          
+          {credentials && (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Email Address</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input 
+                        value={credentials.email} 
+                        readOnly 
+                        className="text-sm bg-white"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(credentials.email, 'Email')}
+                        className="px-3"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Temporary Password</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input 
+                        type={showPassword ? 'text' : 'password'}
+                        value={credentials.temporaryPassword} 
+                        readOnly 
+                        className="text-sm bg-white font-mono"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="px-3"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(credentials.temporaryPassword, 'Password')}
+                        className="px-3"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <Alert>
+                <AlertTriangle className="w-4 h-4" />
+                <AlertDescription className="text-sm">
+                  <strong>Important:</strong> The pilot must change their password on first login. 
+                  Please share these credentials securely with {credentials.pilotName}.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  onClick={() => setShowCredentials(false)} 
+                  className="flex-1"
+                >
+                  Got it!
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

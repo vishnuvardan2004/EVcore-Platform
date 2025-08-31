@@ -32,8 +32,8 @@ const registerValidation = [
   body('password')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   
   body('passwordConfirm')
     .custom((value, { req }) => {
@@ -96,8 +96,8 @@ const changePasswordValidation = [
   body('newPassword')
     .isLength({ min: 8 })
     .withMessage('New password must be at least 8 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('New password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/)
+    .withMessage('New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   
   body('newPasswordConfirm')
     .custom((value, { req }) => {
@@ -183,8 +183,8 @@ router.put('/first-login-password-change',
   body('newPassword')
     .isLength({ min: 8 })
     .withMessage('New password must be at least 8 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('New password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/)
+    .withMessage('New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   body('newPasswordConfirm')
     .custom((value, { req }) => {
       if (value !== req.body.newPassword) {

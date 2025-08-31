@@ -1,5 +1,6 @@
 import { PilotInductionData, Pilot } from '../../../types/pilot';
 import { driverInductionApi } from './api';
+import { pilotService } from '../../../services/database';
 import { config } from '../../../config/environment';
 
 export interface DriverInductionResponse {
@@ -36,6 +37,30 @@ export const driverInductionService = {
       
       if (response.success && response.data) {
         console.log('✅ Driver induction successful:', response.data);
+        
+        // Also save the pilot to local database for offline access
+        try {
+          const localPilot: Pilot = {
+            id: response.data.pilot.pilotId,
+            personalInfo: inductionData.personalInfo,
+            drivingInfo: inductionData.drivingInfo,
+            identityDocs: inductionData.identityDocs,
+            bankingDetails: inductionData.bankingDetails,
+            addressDetails: inductionData.addressDetails,
+            pvcInfo: inductionData.pvcInfo,
+            familyEmergency: inductionData.familyEmergency,
+            medicalInfo: inductionData.medicalInfo,
+            inductionDate: new Date(),
+            status: 'active'
+          };
+          
+          await pilotService.syncPilot(localPilot);
+          console.log('✅ Pilot synced to local database:', localPilot.id);
+        } catch (localError) {
+          console.warn('⚠️ Could not sync pilot to local database:', localError);
+          // Don't fail the entire operation if local sync fails
+        }
+        
         return {
           success: true,
           pilotId: response.data.pilot.pilotId,

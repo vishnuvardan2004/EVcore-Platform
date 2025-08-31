@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { PageLayout } from '../../shared/components/layout/PageLayout';
+import { VehicleTrackerLayout } from '../components/VehicleTrackerLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,8 +20,8 @@ const Reports = () => {
   };
 
   return (
-    <PageLayout 
-      title="📄 Reports" 
+    <VehicleTrackerLayout 
+      title="📄 General Reports" 
       subtitle="Generate trip summaries, duration reports, and export data"
     >
       <div className="max-w-4xl mx-auto space-y-6">
@@ -128,7 +128,7 @@ const Reports = () => {
           </CardContent>
         </Card>
       </div>
-    </PageLayout>
+    </VehicleTrackerLayout>
   );
 };
 

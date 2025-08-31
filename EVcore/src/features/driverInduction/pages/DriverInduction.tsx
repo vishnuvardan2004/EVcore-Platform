@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageLayout } from '../../shared/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { FamilyEmergencySection } from '../components/FamilyEmergencySection';
 import { MedicalInductionSection } from '../components/MedicalInductionSection';
 import { QuickRegistration } from '../components/QuickRegistration';
 import { TemporaryPilotsList } from '../components/TemporaryPilotsList';
+import { tempPilotService } from '../../../services/database';
 import { useToast } from '../../../hooks/use-toast';
 import { driverInductionService } from '../services/driverInductionService';
 import { PilotInductionData, TemporaryPilot } from '../../../types/pilot';
@@ -149,7 +150,19 @@ const DriverInduction = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showFullForm, setShowFullForm] = useState(false);
   
-  // Temporary pilots state (in real app, this would come from context/store)
+  // Load temporary pilots from database on component mount
+  useEffect(() => {
+    const loadTemporaryPilots = async () => {
+      try {
+        const tempPilots = await tempPilotService.getAllTemporaryPilots();
+        setTemporaryPilots(tempPilots);
+      } catch (error) {
+        console.error('Error loading temporary pilots:', error);
+      }
+    };
+    
+    loadTemporaryPilots();
+  }, []);
 
   const updateFormData = (section: keyof DriverInductionData, data: any) => {
     setFormData(prev => ({
@@ -158,17 +171,15 @@ const DriverInduction = () => {
     }));
   };
 
-  const handleTemporaryRegistration = (tempPilot: TemporaryPilot) => {
+  const handleTemporaryRegistration = async (tempPilot: TemporaryPilot) => {
+    // Add to local state (already persisted in database by QuickRegistration)
     setTemporaryPilots(prev => [...prev, tempPilot]);
-    
-    // TODO: Sync with database
-    // pilotService.createTemporaryPilot(tempPilot);
     
     // Switch to temporary pilots tab to show the new registration
     setActiveTab('temporary');
   };
 
-  const handleConvertToFull = (tempPilot: TemporaryPilot) => {
+  const handleConvertToFull = async (tempPilot: TemporaryPilot) => {
     // Pre-fill form with temporary pilot data
     setFormData(prev => ({
       ...prev,
@@ -180,6 +191,21 @@ const DriverInduction = () => {
       }
     }));
     
+    // Mark as being converted in database
+    try {
+      await tempPilotService.convertToFullPilot(tempPilot.tempId);
+      // Update local state
+      setTemporaryPilots(prev => 
+        prev.map(pilot => 
+          pilot.tempId === tempPilot.tempId 
+            ? { ...pilot, status: 'converted' as const }
+            : pilot
+        )
+      );
+    } catch (error) {
+      console.error('Error marking pilot as converted:', error);
+    }
+    
     setShowFullForm(true);
     setActiveTab('full');
     
@@ -189,23 +215,41 @@ const DriverInduction = () => {
     });
   };
 
-  const handleExtendAccess = (tempId: string, additionalRides: number, additionalDays: number) => {
-    setTemporaryPilots(prev => 
-      prev.map(pilot => 
-        pilot.tempId === tempId 
-          ? {
-              ...pilot,
-              allowedRides: pilot.allowedRides + additionalRides,
-              expiryDate: new Date(pilot.expiryDate.getTime() + additionalDays * 24 * 60 * 60 * 1000)
-            }
-          : pilot
-      )
-    );
-    
-    toast({
-      title: 'Access Extended',
-      description: `Added ${additionalRides} rides and ${additionalDays} days.`,
-    });
+  const handleExtendAccess = async (tempId: string, additionalRides: number, additionalDays: number) => {
+    try {
+      const tempPilot = await tempPilotService.getTemporaryPilot(tempId);
+      if (tempPilot) {
+        const updatedPilot = {
+          ...tempPilot,
+          allowedRides: tempPilot.allowedRides + additionalRides,
+          expiryDate: new Date(tempPilot.expiryDate.getTime() + additionalDays * 24 * 60 * 60 * 1000)
+        };
+        
+        await tempPilotService.updateTemporaryPilot(tempId, {
+          allowedRides: updatedPilot.allowedRides,
+          expiryDate: updatedPilot.expiryDate
+        });
+        
+        // Update local state
+        setTemporaryPilots(prev => 
+          prev.map(pilot => 
+            pilot.tempId === tempId ? updatedPilot : pilot
+          )
+        );
+        
+        toast({
+          title: 'Access Extended',
+          description: `Added ${additionalRides} rides and ${additionalDays} days.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error extending access:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to extend access',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleRevokeAccess = (tempId: string) => {

@@ -16,7 +16,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { pilotApiService } from '../../../services/pilotApi';
-import { Pilot } from '../../../types/pilot';
+import { pilotService, tempPilotService } from '../../../services/database';
+import { Pilot, TemporaryPilot } from '../../../types/pilot';
 import { useToast } from '../../../hooks/use-toast';
 import {
   AlertDialog,
@@ -30,9 +31,22 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+// Combined pilot interface for display
+interface CombinedPilot {
+  id: string;
+  name: string;
+  mobile: string;
+  email?: string;
+  type: 'permanent' | 'temporary';
+  status: string;
+  createdDate: Date;
+  pilot?: Pilot;
+  tempPilot?: TemporaryPilot;
+}
+
 export const PilotManagement: React.FC = () => {
-  const [pilots, setPilots] = useState<Pilot[]>([]);
-  const [filteredPilots, setFilteredPilots] = useState<Pilot[]>([]);
+  const [pilots, setPilots] = useState<CombinedPilot[]>([]);
+  const [filteredPilots, setFilteredPilots] = useState<CombinedPilot[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
@@ -43,10 +57,107 @@ export const PilotManagement: React.FC = () => {
   const loadPilots = async () => {
     try {
       setLoading(true);
-      const allPilots = await pilotApiService.getAllPilots();
-      setPilots(allPilots);
-      setFilteredPilots(allPilots);
+      const combinedPilots: CombinedPilot[] = [];
+      
+      // Load permanent pilots from API and local DB
+      try {
+        console.log('🔍 Loading permanent pilots from backend API...');
+        const apiPilots = await pilotApiService.getAllPilots();
+        console.log('✅ API pilots loaded:', apiPilots.length);
+        
+        // Convert permanent pilots to combined format
+        const permanentPilots: CombinedPilot[] = apiPilots.map(pilot => ({
+          id: pilot.id,
+          name: pilot.personalInfo.fullName,
+          mobile: pilot.personalInfo.mobileNumber,
+          email: pilot.personalInfo.emailId,
+          type: 'permanent' as const,
+          status: pilot.status,
+          createdDate: pilot.inductionDate,
+          pilot: pilot
+        }));
+        
+        combinedPilots.push(...permanentPilots);
+        
+        // Sync API pilots to local database for future use
+        for (const pilot of apiPilots) {
+          try {
+            await pilotService.syncPilot(pilot);
+          } catch (syncError) {
+            console.warn('Could not sync pilot to local DB:', pilot.id, syncError);
+          }
+        }
+        
+      } catch (apiError) {
+        console.warn('⚠️ Backend API failed for permanent pilots, trying local database...', apiError);
+        
+        // Fallback to local database for permanent pilots
+        const localPilots = await pilotService.getAllPilots();
+        console.log('📱 Local permanent pilots loaded:', localPilots.length);
+        
+        if (localPilots.length > 0) {
+          const localPermanentPilots: CombinedPilot[] = localPilots.map(pilot => ({
+            id: pilot.id,
+            name: pilot.personalInfo.fullName,
+            mobile: pilot.personalInfo.mobileNumber,
+            email: pilot.personalInfo.emailId,
+            type: 'permanent' as const,
+            status: pilot.status,
+            createdDate: pilot.inductionDate,
+            pilot: pilot
+          }));
+          
+          combinedPilots.push(...localPermanentPilots);
+        }
+      }
+      
+      // Load temporary pilots from local database
+      try {
+        console.log('🔍 Loading temporary pilots from local database...');
+        const tempPilots = await tempPilotService.getAllTemporaryPilots();
+        console.log('✅ Temporary pilots loaded:', tempPilots.length);
+        
+        // Convert temporary pilots to combined format
+        const temporaryPilots: CombinedPilot[] = tempPilots.map(tempPilot => ({
+          id: tempPilot.tempId,
+          name: tempPilot.fullName,
+          mobile: tempPilot.mobileNumber,
+          email: tempPilot.emailId,
+          type: 'temporary' as const,
+          status: tempPilot.status,
+          createdDate: tempPilot.registrationDate,
+          tempPilot: tempPilot
+        }));
+        
+        combinedPilots.push(...temporaryPilots);
+      } catch (tempError) {
+        console.warn('⚠️ Could not load temporary pilots:', tempError);
+      }
+      
+      setPilots(combinedPilots);
+      setFilteredPilots(combinedPilots);
+      
+      if (combinedPilots.length > 0) {
+        const permanentCount = combinedPilots.filter(p => p.type === 'permanent').length;
+        const temporaryCount = combinedPilots.filter(p => p.type === 'temporary').length;
+        
+        toast({
+          title: "Pilots Loaded",
+          description: `Loaded ${permanentCount} permanent and ${temporaryCount} temporary pilots`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "No Data",
+          description: "No pilots found in any database",
+          variant: "default",
+        });
+      }
+      
     } catch (error) {
+      console.error('❌ Error loading pilots:', error);
+      setPilots([]);
+      setFilteredPilots([]);
       toast({
         title: "Error",
         description: "Failed to load pilots data",
@@ -66,10 +177,10 @@ export const PilotManagement: React.FC = () => {
       setFilteredPilots(pilots);
     } else {
       const filtered = pilots.filter(pilot => 
-        pilot.personalInfo.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pilot.personalInfo.mobileNumber.includes(searchTerm) ||
+        pilot.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pilot.mobile.includes(searchTerm) ||
         pilot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pilot.personalInfo.emailId.toLowerCase().includes(searchTerm.toLowerCase())
+        (pilot.email && pilot.email.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredPilots(filtered);
     }
@@ -82,11 +193,25 @@ export const PilotManagement: React.FC = () => {
   const handleDeletePilot = async (pilotId: string) => {
     try {
       setDeleteLoading(pilotId);
-      await pilotApiService.deletePilot(pilotId);
+      
+      const pilot = pilots.find(p => p.id === pilotId);
+      if (!pilot) return;
+      
+      if (pilot.type === 'permanent') {
+        await pilotApiService.deletePilot(pilotId);
+        // Also try to delete from local database
+        try {
+          await pilotService.deletePilot(pilotId);
+        } catch (localError) {
+          console.warn('Could not delete from local DB:', localError);
+        }
+      } else if (pilot.type === 'temporary') {
+        await tempPilotService.deleteTemporaryPilot(pilotId);
+      }
       
       toast({
         title: "Success",
-        description: "Pilot deleted successfully",
+        description: `${pilot.type === 'permanent' ? 'Pilot' : 'Temporary pilot'} deleted successfully`,
       });
       
       // Refresh the list
@@ -106,12 +231,26 @@ export const PilotManagement: React.FC = () => {
     const variants = {
       active: 'bg-green-100 text-green-800 border-green-200',
       inactive: 'bg-red-100 text-red-800 border-red-200',
-      pending: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      temporary: 'bg-blue-100 text-blue-800 border-blue-200',
+      expired: 'bg-gray-100 text-gray-800 border-gray-200',
+      converted: 'bg-purple-100 text-purple-800 border-purple-200'
     };
     
     return (
       <Badge className={variants[status as keyof typeof variants] || variants.pending}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  };
+
+  const getTypeBadge = (type: 'permanent' | 'temporary') => {
+    return (
+      <Badge 
+        variant={type === 'permanent' ? 'default' : 'secondary'}
+        className={type === 'permanent' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}
+      >
+        {type === 'permanent' ? 'Permanent' : 'Temporary'}
       </Badge>
     );
   };
@@ -207,13 +346,16 @@ export const PilotManagement: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <CardTitle className="text-lg font-semibold text-gray-900">
-                      {pilot.personalInfo.fullName}
+                      {pilot.name}
                     </CardTitle>
                     <CardDescription className="text-sm text-gray-600 font-mono">
                       {pilot.id}
                     </CardDescription>
                   </div>
-                  {getStatusBadge(pilot.status)}
+                  <div className="flex flex-col gap-1">
+                    {getTypeBadge(pilot.type)}
+                    {getStatusBadge(pilot.status)}
+                  </div>
                 </div>
               </CardHeader>
               
@@ -221,23 +363,48 @@ export const PilotManagement: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Phone className="w-4 h-4" />
-                    <span>{pilot.personalInfo.mobileNumber}</span>
+                    <span>{pilot.mobile}</span>
                   </div>
                   
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Mail className="w-4 h-4" />
-                    <span className="truncate">{pilot.personalInfo.emailId}</span>
-                  </div>
+                  {pilot.email && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Mail className="w-4 h-4" />
+                      <span className="truncate">{pilot.email}</span>
+                    </div>
+                  )}
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4" />
-                    <span>Joined {formatDate(pilot.inductionDate)}</span>
+                    <span>
+                      {pilot.type === 'permanent' ? 'Inducted' : 'Registered'} {formatDate(pilot.createdDate)}
+                    </span>
                   </div>
                   
-                  {pilot.personalInfo.designation && (
+                  {/* Additional info for permanent pilots */}
+                  {pilot.type === 'permanent' && pilot.pilot?.personalInfo.designation && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <UserCheck className="w-4 h-4" />
-                      <span>{pilot.personalInfo.designation}</span>
+                      <span>{pilot.pilot.personalInfo.designation}</span>
+                    </div>
+                  )}
+                  
+                  {/* Additional info for temporary pilots */}
+                  {pilot.type === 'temporary' && pilot.tempPilot && (
+                    <div className="space-y-1 pt-2 border-t">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Rides:</span>
+                        <span className="font-medium">
+                          {pilot.tempPilot.completedRides} / {pilot.tempPilot.allowedRides}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Expires:</span>
+                        <span className={`font-medium ${
+                          new Date(pilot.tempPilot.expiryDate) < new Date() ? 'text-red-600' : 'text-gray-900'
+                        }`}>
+                          {formatDate(pilot.tempPilot.expiryDate)}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -270,7 +437,7 @@ export const PilotManagement: React.FC = () => {
                           Delete Pilot
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete <strong>{pilot.personalInfo.fullName}</strong> ({pilot.id})?
+                          Are you sure you want to delete <strong>{pilot.name}</strong> ({pilot.id})?
                           This action cannot be undone and will permanently remove all pilot data.
                         </AlertDialogDescription>
                       </AlertDialogHeader>

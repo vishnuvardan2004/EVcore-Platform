@@ -23,11 +23,13 @@ import {
   Filter,
   RefreshCw,
   PieChart,
-  Activity
+  Activity,
+  Plus
 } from 'lucide-react';
 import { vehicleService } from '../../../services/database';
 import { Deployment } from '../../../types/vehicle';
 import { AlertData } from './Alerts';
+import { generateSampleData } from '../../../utils/sampleDataGenerator';
 import { useToast } from '../../../hooks/use-toast';
 
 interface ReportStats {
@@ -52,7 +54,8 @@ interface ReportData {
   deployments: Deployment[];
   alerts: AlertData[];
   stats: ReportStats;
-  dateRange: DateRange;
+  dateRange?: DateRange;
+  chartData?: any[];
 }
 
 const Reports = () => {
@@ -77,6 +80,36 @@ const Reports = () => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [reportType, setReportType] = useState<string>('comprehensive');
   const { toast } = useToast();
+
+  // Function to generate sample data for testing
+  const handleGenerateSampleData = async () => {
+    try {
+      setLoading(true);
+      toast({
+        title: "Generating Sample Data",
+        description: "Creating sample vehicles, deployments, and pilots...",
+      });
+      
+      const result = await generateSampleData();
+      
+      toast({
+        title: "Sample Data Generated",
+        description: `Generated ${result.vehicles} vehicles, ${result.deployments} deployments, and ${result.pilots} pilots.`,
+      });
+      
+      // Refresh the report data
+      await fetchReportData();
+    } catch (error) {
+      console.error('Error generating sample data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate sample data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Helper function to analyze alerts from deployments
   const analyzeAlertsFromDeployments = (deployments: Deployment[]): AlertData[] => {
@@ -178,11 +211,49 @@ const Reports = () => {
       setLoading(true);
       const deployments = await vehicleService.getDeploymentHistory();
       
+      // Ensure deployments is an array
+      const safeDeployments = Array.isArray(deployments) ? deployments : [];
+      
+      if (safeDeployments.length === 0) {
+        console.log('No deployment data found. Consider adding sample data for testing.');
+        // Set empty state with default stats
+        setStats({
+          totalDeployments: 0,
+          successfulReturns: 0,
+          pendingReturns: 0,
+          overdue: 0,
+          totalVehiclesUsed: 0,
+          avgDeploymentTime: '0h 0m',
+          totalAlerts: 0,
+          totalKms: 0,
+          topVehicle: 'N/A',
+          totalHours: 0
+        });
+        setReportData({
+          deployments: [],
+          alerts: [],
+          stats: {
+            totalDeployments: 0,
+            successfulReturns: 0,
+            pendingReturns: 0,
+            overdue: 0,
+            totalVehiclesUsed: 0,
+            avgDeploymentTime: '0h 0m',
+            totalAlerts: 0,
+            totalKms: 0,
+            topVehicle: 'N/A',
+            totalHours: 0
+          },
+          chartData: []
+        });
+        return;
+      }
+      
       // Filter deployments by date range
       const startDate = new Date(dateRange.startDate);
       const endDate = new Date(dateRange.endDate + 'T23:59:59');
       
-      const filteredDeployments = deployments.filter(d => {
+      const filteredDeployments = safeDeployments.filter(d => {
         const outDate = d.outTimestamp ? new Date(d.outTimestamp) : null;
         const inDate = d.inTimestamp ? new Date(d.inTimestamp) : null;
         return (outDate && outDate >= startDate && outDate <= endDate) ||
@@ -236,9 +307,13 @@ const Reports = () => {
         return acc;
       }, {} as Record<string, number>);
       
-      const topVehicle = Object.entries(vehicleUsage).reduce((a, b) => 
-        vehicleUsage[a[0]] > vehicleUsage[b[0]] ? a : b
-      )?.[0] || 'N/A';
+      // Handle empty vehicleUsage to prevent reduce error
+      const vehicleEntries = Object.entries(vehicleUsage);
+      const topVehicle = vehicleEntries.length > 0 
+        ? vehicleEntries.reduce((a, b) => 
+            vehicleUsage[a[0]] > vehicleUsage[b[0]] ? a : b
+          )[0] 
+        : 'N/A';
 
       const newStats: ReportStats = {
         totalDeployments,
@@ -510,6 +585,34 @@ const Reports = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Sample Data Generation */}
+        {(!reportData || reportData.deployments?.length === 0) && (
+          <Card className="border-dashed border-2 border-gray-300 bg-gray-50">
+            <CardContent className="p-6 text-center">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Database className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">No Data Available</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Generate sample data to test the Vehicle Deployment Tracker features
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleGenerateSampleData} 
+                  disabled={loading}
+                  className="gap-2"
+                  variant="outline"
+                >
+                  <Plus className="w-4 h-4" />
+                  Generate Sample Data
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Report Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

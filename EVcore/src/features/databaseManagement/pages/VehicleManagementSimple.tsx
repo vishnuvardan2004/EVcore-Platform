@@ -8,17 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { 
   Car, 
@@ -30,7 +19,7 @@ import {
   Fuel,
   ChevronDown,
   ChevronUp,
-  Trash2
+  Eye
 } from 'lucide-react';
 import { Vehicle } from '../types';
 import { dbApi } from '../services/api';
@@ -45,7 +34,6 @@ export const VehicleManagementSimple: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Vehicle>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchVehicles();
@@ -171,26 +159,34 @@ export const VehicleManagementSimple: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    // Required fields validation
-    if (!formData.Vehicle_ID?.trim()) newErrors.Vehicle_ID = 'Vehicle ID is required';
-    if (!formData.VIN_Number?.trim()) newErrors.VIN_Number = 'VIN Number is required';
-    if (!formData.Engine_Number?.trim()) newErrors.Engine_Number = 'Engine Number is required';
+    // Database management API required fields validation (from databaseService.js)
+    // Required: ['Vehicle_ID', 'VIN_Number', 'Engine_Number', 'Registration_Number', 'Registration_Date', 'Brand', 'Model', 'Year']
+    
     if (!formData.Registration_Number?.trim()) newErrors.Registration_Number = 'Registration Number is required';
     if (!formData.Brand?.trim()) newErrors.Brand = 'Brand is required';
     if (!formData.Model?.trim()) newErrors.Model = 'Model is required';
-    if (!formData.Vehicle_Class) newErrors.Vehicle_Class = 'Vehicle Class is required';
-    if (!formData.Vehicle_Type) newErrors.Vehicle_Type = 'Vehicle Type is required';
-    if (!formData.Fuel_Type) newErrors.Fuel_Type = 'Fuel Type is required';
+    if (!formData.Year) newErrors.Year = 'Manufacturing year is required';
+    
+    // Note: Vehicle_ID, VIN_Number, Engine_Number will be auto-generated if not provided
+    // Registration_Date will default to current date if not provided
     
     // Numeric validations
-    if (formData.No_of_Tyres && formData.No_of_Tyres < 1) {
-      newErrors.No_of_Tyres = 'Number of tyres must be positive';
+    if (formData.Year) {
+      const currentYear = new Date().getFullYear();
+      if (formData.Year < 2015 || formData.Year > currentYear + 1) {
+        newErrors.Year = `Year must be between 2015 and ${currentYear + 1}`;
+      }
     }
+    
+    // Optional field validations
     if (formData.Battery_Capacity_kWh && formData.Battery_Capacity_kWh < 0) {
       newErrors.Battery_Capacity_kWh = 'Battery capacity cannot be negative';
     }
     if (formData.Odometer_Reading && formData.Odometer_Reading < 0) {
       newErrors.Odometer_Reading = 'Odometer reading cannot be negative';
+    }
+    if (formData.No_of_Tyres && formData.No_of_Tyres < 2) {
+      newErrors.No_of_Tyres = 'Number of tyres must be at least 2';
     }
     
     setErrors(newErrors);
@@ -223,30 +219,36 @@ export const VehicleManagementSimple: React.FC = () => {
     try {
       setSaving(true);
       
-      // Create new vehicle with all required fields
-      const newVehicle: Omit<Vehicle, '_id' | 'createdAt' | 'updatedAt'> = {
-        // Primary Vehicle Information
-        Vehicle_ID: formData.Vehicle_ID || '',
-        VIN_Number: formData.VIN_Number || '',
-        Engine_Number: formData.Engine_Number || '',
+      // Create new vehicle with all required fields for database management API
+      // Note: We deliberately DON'T include 'vehicleId' field to avoid conflicts
+      // with the Vehicle model's auto-generation logic in the backend
+      const timestamp = Date.now();
+      const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      
+      const newVehicle: any = {
+        // Primary Vehicle Information (required by database management API)
+        Vehicle_ID: `VEH_${timestamp}_${randomSuffix}`, // Unique ID for database management system
+        VIN_Number: formData.VIN_Number || `VIN${timestamp}${randomSuffix}`,
+        Engine_Number: formData.Engine_Number || `ENG${timestamp}${randomSuffix}`,
         Registration_Number: formData.Registration_Number || '',
-        Registration_Date: formData.Registration_Date || '',
+        Registration_Date: formData.Registration_Date || new Date().toISOString().split('T')[0],
         Brand: formData.Brand || '',
         Model: formData.Model || '',
+        Year: formData.Year || new Date().getFullYear(),
         Vehicle_Class: formData.Vehicle_Class || 'Hatchback',
         Vehicle_Type: formData.Vehicle_Type || 'E4W',
         Fuel_Type: formData.Fuel_Type || 'Electric',
         
-        // Battery & Technical Details
-        Battery_Serial_Number: formData.Battery_Serial_Number || '',
+        // Battery & Technical Details (with defaults)
+        Battery_Serial_Number: formData.Battery_Serial_Number || `BAT${timestamp.toString().slice(-10)}`,
         No_of_Tyres: formData.No_of_Tyres || 4,
         Tyre_Serial_Numbers: formData.Tyre_Serial_Numbers || '',
-        Charger_Serial_Number: formData.Charger_Serial_Number || '',
+        Charger_Serial_Number: formData.Charger_Serial_Number || `CHG${timestamp.toString().slice(-10)}`,
         Charger_Type: formData.Charger_Type || 'Slow',
-        Battery_Capacity_kWh: formData.Battery_Capacity_kWh || 0,
-        Charging_Port_Type: formData.Charging_Port_Type || '',
+        Battery_Capacity_kWh: formData.Battery_Capacity_kWh || 40,
+        Charging_Port_Type: formData.Charging_Port_Type || 'CCS2',
         
-        // Insurance & Legal Documents
+        // Insurance & Legal Documents (optional fields)
         Insurance_Provider: formData.Insurance_Provider || '',
         Insurance_Policy_No: formData.Insurance_Policy_No || '',
         Insurance_Expiry_Date: formData.Insurance_Expiry_Date || '',
@@ -259,16 +261,26 @@ export const VehicleManagementSimple: React.FC = () => {
         // Condition & Maintenance
         Vehicle_Condition: formData.Vehicle_Condition || 'New',
         Odometer_Reading: formData.Odometer_Reading || 0,
-        Location_Assigned: formData.Location_Assigned || '',
+        Location_Assigned: formData.Location_Assigned || 'Main Office',
         Assigned_Pilot_ID: formData.Assigned_Pilot_ID || '',
         Maintenance_Due_Date: formData.Maintenance_Due_Date || '',
         Last_Service_Date: formData.Last_Service_Date || '',
         Status: formData.Status || 'Active'
       };
       
-      console.log('Sending vehicle data to API:', newVehicle);
+      console.log('Sending vehicle data to API (database management format):', newVehicle);
       
-      const response = await dbApi.createVehicle(newVehicle);
+      // Important: Ensure we don't include conflicting fields that might interfere
+      // with the backend Vehicle model's auto-generation logic
+      const sanitizedVehicleData = { ...newVehicle };
+      
+      // Remove any fields that might conflict with the Vehicle.js model
+      delete sanitizedVehicleData.vehicleId; // Let backend auto-generate this
+      delete sanitizedVehicleData._id;        // MongoDB will auto-generate this
+      
+      console.log('Sanitized vehicle data:', sanitizedVehicleData);
+
+      const response = await dbApi.createVehicle(sanitizedVehicleData as any);
       console.log('Vehicle creation response:', response);
       console.log('Response data:', response.data);
       
@@ -333,45 +345,6 @@ export const VehicleManagementSimple: React.FC = () => {
       }
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDelete = async (vehicleId: string, vehicleName: string) => {
-    try {
-      setDeleteLoading(vehicleId);
-      console.log('Deleting vehicle:', vehicleId);
-      
-      const response = await dbApi.deleteVehicle(vehicleId);
-      console.log('Vehicle deletion response:', response);
-      
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: `Vehicle "${vehicleName}" has been deleted successfully.`,
-        });
-        
-        // Refresh the vehicles list
-        await fetchVehicles();
-      } else {
-        throw new Error(response.message || 'Failed to delete vehicle');
-      }
-    } catch (error) {
-      console.error('Error deleting vehicle:', error);
-      
-      let errorMessage = "Failed to delete vehicle. Please try again.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null && (error as any).message) {
-        errorMessage = (error as any).message;
-      }
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setDeleteLoading(null);
     }
   };
 
@@ -482,43 +455,6 @@ export const VehicleManagementSimple: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="mt-4 pt-3 border-t border-gray-100">
-                        <div className="flex justify-end gap-2">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                disabled={deleteLoading === vehicle._id}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                {deleteLoading === vehicle._id ? 'Deleting...' : 'Delete'}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Vehicle</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{vehicle.Registration_Number} - {vehicle.Brand} {vehicle.Model}"? 
-                                  This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(vehicle._id!, `${vehicle.Registration_Number} - ${vehicle.Brand} ${vehicle.Model}`)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete Vehicle
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-
                       {/* Expandable Details Section */}
                       {isExpanded && renderDetailedView(vehicle)}
                     </CardContent>
@@ -608,8 +544,10 @@ export const VehicleManagementSimple: React.FC = () => {
                     id="brand"
                     value={formData.Brand || ''}
                     onChange={(e) => setFormData({...formData, Brand: e.target.value})}
-                    placeholder="Manufacturer"
+                    placeholder="Enter vehicle brand/company name"
+                    className={errors.Brand ? 'border-red-500' : ''}
                   />
+                  {errors.Brand && <p className="text-sm text-red-500">{errors.Brand}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -620,6 +558,21 @@ export const VehicleManagementSimple: React.FC = () => {
                     onChange={(e) => setFormData({...formData, Model: e.target.value})}
                     placeholder="Vehicle model name"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="year">Manufacturing Year *</Label>
+                  <Input
+                    id="year"
+                    type="number"
+                    min="2015"
+                    max={new Date().getFullYear() + 1}
+                    value={formData.Year || ''}
+                    onChange={(e) => setFormData({...formData, Year: parseInt(e.target.value) || undefined})}
+                    placeholder="e.g., 2023"
+                    className={errors.Year ? 'border-red-500' : ''}
+                  />
+                  {errors.Year && <p className="text-sm text-red-500">{errors.Year}</p>}
                 </div>
 
                 <div className="space-y-2">

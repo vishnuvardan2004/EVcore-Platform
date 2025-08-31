@@ -49,6 +49,7 @@ export interface Vehicle extends DatabaseDocument {
   Registration_Date: string;       // RTO registration date
   Brand: string;                   // Manufacturer
   Model: string;                   // Vehicle model name
+  Year: number;                    // Manufacturing year
   Vehicle_Class: 'Hatchback' | 'Sedan' | 'Scooter' | 'SUV' | 'Truck' | 'Van'; // Vehicle class enum
   Vehicle_Type: 'E4W' | 'E2W' | 'Shuttle'; // Vehicle type enum
   Fuel_Type: 'Electric' | 'Hybrid' | 'NA'; // Fuel type enum

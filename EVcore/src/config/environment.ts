@@ -1,5 +1,5 @@
 export const config = {
-  // API Configuration
+  // API Configuration - Development with fallback to production
   API_BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
   WS_URL: import.meta.env.VITE_WS_URL || 'ws://localhost:3001',
   

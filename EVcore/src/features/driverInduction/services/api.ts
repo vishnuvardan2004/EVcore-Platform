@@ -108,6 +108,35 @@ export const driverInductionApi = {
    */
   getInductionStats: (): Promise<APIResponse<InductionStatsDTO>> =>
     apiService.request<InductionStatsDTO>('/api/driver-induction/stats'),
+
+  /**
+   * Register temporary pilot with automatic account creation
+   */
+  registerTemporaryPilot: (tempPilotData: {
+    fullName: string;
+    mobileNumber: string;
+    emailId?: string;
+    allowedRides: number;
+    validityDays: number;
+    notes?: string;
+  }): Promise<APIResponse<{
+    pilot: {
+      pilotId: string;
+      tempId: string;
+      expiryDate: string;
+    };
+    credentials: {
+      email: string;
+      temporaryPassword: string;
+      requirePasswordChange: boolean;
+      note: string;
+    };
+    userCreated: boolean;
+  }>> =>
+    apiService.request('/api/driver-induction/register-temporary', {
+      method: 'POST',
+      body: JSON.stringify(tempPilotData),
+    }),
 };
 
 export default driverInductionApi;

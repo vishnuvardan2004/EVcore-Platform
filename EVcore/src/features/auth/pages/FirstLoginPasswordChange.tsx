@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { Progress } from '../components/ui/progress';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { CheckCircle, XCircle, Eye, EyeOff, Lock } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContextEnhanced';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 const FirstLoginPasswordChange: React.FC = () => {
-  const { firstLoginPasswordChange } = useAuth();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     newPassword: '',
     newPasswordConfirm: ''
@@ -22,16 +27,16 @@ const FirstLoginPasswordChange: React.FC = () => {
   // Password strength calculation
   const calculatePasswordStrength = (password: string): number => {
     let strength = 0;
-    if (password.length >= 8) strength += 25;
-    if (/[A-Z]/.test(password)) strength += 25;
-    if (/[a-z]/.test(password)) strength += 25;
-    if (/[0-9]/.test(password)) strength += 12.5;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 12.5;
+    if (password.length >= 8) strength += 20;
+    if (/[A-Z]/.test(password)) strength += 20;
+    if (/[a-z]/.test(password)) strength += 20;
+    if (/[0-9]/.test(password)) strength += 20;
+    if (/[^A-Za-z0-9]/.test(password)) strength += 20; // Special characters
     return Math.min(strength, 100);
   };
 
   const passwordStrength = calculatePasswordStrength(formData.newPassword);
-  const isPasswordValid = passwordStrength >= 75 && formData.newPassword.length >= 8;
+  const isPasswordValid = passwordStrength >= 100 && formData.newPassword.length >= 8;
   const isConfirmValid = formData.newPassword === formData.newPasswordConfirm && formData.newPasswordConfirm.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,15 +57,25 @@ const FirstLoginPasswordChange: React.FC = () => {
     }
 
     try {
-      const success = await firstLoginPasswordChange(
-        formData.newPassword,
-        formData.newPasswordConfirm
-      );
+      const response = await apiService.auth.firstLoginPasswordChange({
+        newPassword: formData.newPassword,
+        newPasswordConfirm: formData.newPasswordConfirm
+      });
 
-      if (!success) {
+      if (response.success) {
+        toast({
+          title: "Password Updated",
+          description: "Your password has been successfully updated. Please log in again.",
+        });
+        
+        // Log out user to force re-login with new password
+        await logout();
+        navigate('/login');
+      } else {
         setError('Failed to set password. Please try again.');
       }
     } catch (err: any) {
+      console.error('Password change failed:', err);
       setError(err.message || 'An error occurred while setting your password');
     } finally {
       setIsLoading(false);
@@ -167,6 +182,10 @@ const FirstLoginPasswordChange: React.FC = () => {
                 <div className={`flex items-center ${/[0-9]/.test(formData.newPassword) ? 'text-green-600' : 'text-gray-500'}`}>
                   {/[0-9]/.test(formData.newPassword) ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
                   One number
+                </div>
+                <div className={`flex items-center ${/[^A-Za-z0-9]/.test(formData.newPassword) ? 'text-green-600' : 'text-gray-500'}`}>
+                  {/[^A-Za-z0-9]/.test(formData.newPassword) ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                  One special character (!@#$%^&* etc.)
                 </div>
               </div>
             </div>

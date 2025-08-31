@@ -1,0 +1,27 @@
+# Railway Configuration for EVcore Backend
+# This file configures deployment on Railway.app
+
+name: evcore-backend
+
+# Environment Variables
+environment:
+  NODE_ENV: production
+  MONGO_URI: mongodb+srv://vishnuvardan2004:Jaya.988@evcore.gjcfg9u.mongodb.net/evcore
+  MONGO_TEST_URI: mongodb+srv://vishnuvardan2004:Jaya.988@evcore.gjcfg9u.mongodb.net/evcore_test
+  PORT: $PORT
+
+# Build Configuration
+build:
+  buildCommand: npm install && npm run build
+  startCommand: npm start
+
+# Health Check
+healthCheck:
+  path: /api/health
+  timeout: 30s
+  interval: 60s
+
+# Resource Limits
+resources:
+  memory: 1024Mi
+  cpu: 0.5
