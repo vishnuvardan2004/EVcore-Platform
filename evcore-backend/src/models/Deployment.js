@@ -10,11 +10,64 @@ const deploymentSchema = new mongoose.Schema({
     match: [/^(DEP_|TEST_DEP_)\d{3}_\d{6}$/, 'Deployment ID must follow format: DEP_XXX_YYMMDD or TEST_DEP_XXX_YYMMDD']
   },
   
-  // Vehicle & Pilot Assignment
+  // Vehicle Assignment - Phase 3: Data Hub Reference Primary
   vehicleId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Vehicle',
-    required: [true, 'Vehicle assignment is required']
+    // Phase 3: Legacy field, optional for backward compatibility
+    validate: {
+      validator: function(vehicleId) {
+        // Phase 3: Either old vehicleId OR new dataHubVehicleId is required
+        return vehicleId || this.dataHubVehicleId;
+      },
+      message: 'Either legacy vehicleId or dataHubVehicleId is required'
+    }
+  },
+  
+  // Phase 3: Primary vehicle reference (Data Hub)
+  dataHubVehicleId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: [function() { return this.source === 'data-hub-reference'; }, 'Data Hub vehicle ID is required for Phase 3 deployments'],
+    // Reference to the vehicle in Database Management (Data Hub)
+    validate: {
+      validator: function(dataHubVehicleId) {
+        // Phase 3: dataHubVehicleId is required for new deployments
+        return this.vehicleId || dataHubVehicleId;
+      },
+      message: 'Either legacy vehicleId or dataHubVehicleId is required'
+    }
+  },
+  
+  vehicleRegistration: {
+    type: String,
+    trim: true,
+    required: [function() { return this.source === 'data-hub-reference'; }, 'Vehicle registration is required for Phase 3 deployments'],
+    // Phase 3: Always required for Data Hub reference deployments
+    validate: {
+      validator: function(registration) {
+        // If using Data Hub reference, registration is required
+        return !this.dataHubVehicleId || registration;
+      },
+      message: 'Vehicle registration is required when using Data Hub reference'
+    }
+  },
+  
+  vehicleDetails: {
+    // Phase 3: Enhanced cached vehicle information for performance
+    brand: String,
+    model: String,
+    vehicleId: String, // Database Management Vehicle_ID
+    registrationNumber: String,
+    vinNumber: String,
+    currentHub: String,
+    // Metadata
+    cachedAt: { type: Date, default: Date.now }
+  },
+  
+  source: {
+    type: String,
+    enum: ['local', 'data-hub-reference'],
+    default: 'data-hub-reference' // Phase 3: Default to Data Hub reference
   },
   
   pilotId: {

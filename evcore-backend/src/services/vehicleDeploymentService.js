@@ -5,7 +5,7 @@
 
 const mongoose = require('mongoose');
 const { 
-  Vehicle, 
+  VehicleDeployment: Vehicle, 
   Deployment, 
   DeploymentHistory, 
   VehicleMaintenanceLog 
@@ -97,6 +97,38 @@ class VehicleDeploymentService {
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  }
+
+  /**
+   * Find vehicle by registration number
+   */
+  static async findVehicleByRegistration(registrationNumber) {
+    try {
+      const vehicle = await Vehicle.findOne({
+        registrationNumber: registrationNumber.toUpperCase(),
+        isActive: true
+      })
+      .select('vehicleId registrationNumber make model year color batteryStatus status location currentHub')
+      .lean();
+
+      if (!vehicle) {
+        logger.warn(`Vehicle lookup failed: Registration number ${registrationNumber} not found`);
+        return null;
+      }
+
+      logger.info(`Vehicle found: ${vehicle.registrationNumber} (${vehicle.make} ${vehicle.model})`);
+      return vehicle;
+    } catch (error) {
+      logger.error('Error finding vehicle by registration:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Convert degrees to radians
+   */
+  static toRadians(degrees) {
+    return degrees * (Math.PI / 180);
   }
 
   static toRadians(degrees) {

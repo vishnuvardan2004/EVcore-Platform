@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const config = require('../config');
 
-const vehicleSchema = new mongoose.Schema({
+const vehicleDeploymentSchema = new mongoose.Schema({
   // Basic Vehicle Information
   vehicleId: {
     type: String,
@@ -186,25 +186,25 @@ const vehicleSchema = new mongoose.Schema({
 });
 
 // Indexes for performance (vehicleId index is automatically created by unique: true)
-vehicleSchema.index({ status: 1 });
-vehicleSchema.index({ currentHub: 1 });
-vehicleSchema.index({ isActive: 1 });
-vehicleSchema.index({ createdAt: -1 });
+vehicleDeploymentSchema.index({ status: 1 });
+vehicleDeploymentSchema.index({ currentHub: 1 });
+vehicleDeploymentSchema.index({ isActive: 1 });
+vehicleDeploymentSchema.index({ createdAt: -1 });
 
 // Virtual for checking if maintenance is due
-vehicleSchema.virtual('isMaintenanceDue').get(function() {
+vehicleDeploymentSchema.virtual('isMaintenanceDue').get(function() {
   if (!this.nextMaintenanceDate) return false;
   return new Date() >= this.nextMaintenanceDate;
 });
 
 // Virtual for vehicle age
-vehicleSchema.virtual('vehicleAge').get(function() {
+vehicleDeploymentSchema.virtual('vehicleAge').get(function() {
   const currentYear = new Date().getFullYear();
   return currentYear - this.year;
 });
 
 // Virtual for battery health status
-vehicleSchema.virtual('batteryHealthStatus').get(function() {
+vehicleDeploymentSchema.virtual('batteryHealthStatus').get(function() {
   if (this.batteryHealth >= 80) return 'Good';
   if (this.batteryHealth >= 60) return 'Fair';
   if (this.batteryHealth >= 40) return 'Poor';
@@ -212,7 +212,7 @@ vehicleSchema.virtual('batteryHealthStatus').get(function() {
 });
 
 // Pre-save middleware to generate vehicle ID if not provided
-vehicleSchema.pre('save', async function(next) {
+vehicleDeploymentSchema.pre('save', async function(next) {
   if (this.isNew && !this.vehicleId) {
     try {
       const count = await mongoose.model('Vehicle').countDocuments();
@@ -232,7 +232,7 @@ vehicleSchema.pre('save', async function(next) {
 });
 
 // Static method to get available vehicles
-vehicleSchema.statics.getAvailableVehicles = function(hub = null) {
+vehicleDeploymentSchema.statics.getAvailableVehicles = function(hub = null) {
   const query = { 
     status: 'available', 
     isActive: true 
@@ -246,7 +246,7 @@ vehicleSchema.statics.getAvailableVehicles = function(hub = null) {
 };
 
 // Static method to get vehicles due for maintenance
-vehicleSchema.statics.getVehiclesDueForMaintenance = function() {
+vehicleDeploymentSchema.statics.getVehiclesDueForMaintenance = function() {
   const today = new Date();
   return this.find({
     nextMaintenanceDate: { $lte: today },
@@ -255,7 +255,7 @@ vehicleSchema.statics.getVehiclesDueForMaintenance = function() {
 };
 
 // Instance method to update location
-vehicleSchema.methods.updateLocation = function(latitude, longitude, address) {
+vehicleDeploymentSchema.methods.updateLocation = function(latitude, longitude, address) {
   this.currentLocation = {
     latitude,
     longitude,
@@ -266,7 +266,7 @@ vehicleSchema.methods.updateLocation = function(latitude, longitude, address) {
 };
 
 // Instance method to update status with validation
-vehicleSchema.methods.updateStatus = function(newStatus, reason = '') {
+vehicleDeploymentSchema.methods.updateStatus = function(newStatus, reason = '') {
   const validTransitions = {
     'available': ['deployed', 'maintenance', 'charging', 'out_of_service'],
     'deployed': ['available', 'maintenance', 'out_of_service'],
@@ -288,6 +288,7 @@ vehicleSchema.methods.updateStatus = function(newStatus, reason = '') {
   return this.save();
 };
 
-const Vehicle = mongoose.model('Vehicle', vehicleSchema);
+// Use a specific collection name for vehicle deployment to avoid conflicts with database management
+const VehicleDeployment = mongoose.model('VehicleDeployment', vehicleDeploymentSchema, 'vehicle_deployments');
 
-module.exports = Vehicle;
+module.exports = VehicleDeployment;

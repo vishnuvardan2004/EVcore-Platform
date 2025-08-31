@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Keyboard, AlertCircle, CheckCircle2, Car } from 'lucide-react';
 
 interface VehicleScannerProps {
-  onVehicleDetected: (vehicleId: string) => void;
+  onVehicleDetected: (vehicleNumber: string) => void;
   isProcessing?: boolean;
 }
 
@@ -32,10 +32,10 @@ export const VehicleScanner: React.FC<VehicleScannerProps> = ({
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
               <Car className="w-4 h-4 text-blue-600" />
             </div>
-            Enter Vehicle Number
+            Enter Registration Number
           </CardTitle>
           <p className="text-gray-600 text-sm mt-2">
-            Enter the vehicle ID manually to proceed with deployment
+            Enter the vehicle registration number manually to proceed with deployment
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -44,12 +44,12 @@ export const VehicleScanner: React.FC<VehicleScannerProps> = ({
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Keyboard className="w-4 h-4" />
-                Enter Vehicle ID
+                Enter Registration Number
               </label>
               <Input
                 value={manualEntry}
                 onChange={(e) => setManualEntry(e.target.value)}
-                placeholder={import.meta.env.MODE === 'development' ? 'e.g., VH-1234 (dev sample)' : 'Enter vehicle number'}
+                placeholder={import.meta.env.MODE === 'development' ? 'e.g., MH12AB1234 (dev sample)' : 'Enter registration number'}
                 className="text-center text-lg font-mono tracking-wider"
                 onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
               />

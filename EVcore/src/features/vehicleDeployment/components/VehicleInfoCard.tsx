@@ -38,7 +38,7 @@ export const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Vehicle ID</span>
+              <span className="text-sm text-gray-600">Registration Number</span>
               <Badge variant="outline" className="font-mono text-sm">
                 {vehicleNumber}
               </Badge>

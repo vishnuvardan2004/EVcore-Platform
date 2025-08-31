@@ -216,6 +216,89 @@ const validateCreateDeployment = [
   handleValidationErrors
 ];
 
+const validateCreateDeploymentByRegistration = [
+  body('deploymentId')
+    .optional()
+    .matches(/^(DEP_\d{3}_\d{6}|TEST_DEP_\d{3}_\d{6})$/)
+    .withMessage('Deployment ID must follow format: DEP_XXX_YYMMDD or TEST_DEP_XXX_YYMMDD'),
+    
+  body('registrationNumber')
+    .notEmpty()
+    .withMessage('Vehicle registration number is required')
+    .isLength({ min: 6, max: 20 })
+    .withMessage('Registration number must be 6-20 characters')
+    .matches(/^[A-Z0-9]+$/)
+    .withMessage('Registration number must contain only uppercase letters and numbers'),
+    
+  body('pilotId')
+    .notEmpty()
+    .withMessage('Pilot ID is required')
+    .isMongoId()
+    .withMessage('Invalid pilot ID format'),
+    
+  body('startTime')
+    .isISO8601()
+    .withMessage('Invalid start time format')
+    .custom((value) => {
+      const startTime = new Date(value);
+      const now = new Date();
+      if (startTime < now && Math.abs(startTime - now) > 60000) { // Allow 1 minute tolerance
+        throw new Error('Start time cannot be in the past');
+      }
+      return true;
+    }),
+    
+  body('estimatedEndTime')
+    .isISO8601()
+    .withMessage('Invalid estimated end time format')
+    .custom((value, { req }) => {
+      const endTime = new Date(value);
+      const startTime = new Date(req.body.startTime);
+      if (endTime <= startTime) {
+        throw new Error('End time must be after start time');
+      }
+      const maxDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      if (endTime - startTime > maxDuration) {
+        throw new Error('Deployment duration cannot exceed 24 hours');
+      }
+      return true;
+    }),
+    
+  body('startLocation')
+    .notEmpty()
+    .withMessage('Start location is required'),
+    
+  body('startLocation.latitude')
+    .isFloat({ min: -90, max: 90 })
+    .withMessage('Invalid latitude'),
+    
+  body('startLocation.longitude')
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('Invalid longitude'),
+    
+  body('startLocation.address')
+    .notEmpty()
+    .withMessage('Start location address is required')
+    .isLength({ min: 10, max: 200 })
+    .withMessage('Address must be 10-200 characters'),
+    
+  body('purpose')
+    .isIn(['Office', 'Personal', 'Maintenance', 'Emergency', 'Training'])
+    .withMessage('Invalid deployment purpose'),
+    
+  body('endLocation.latitude')
+    .optional()
+    .isFloat({ min: -90, max: 90 })
+    .withMessage('Invalid end location latitude'),
+    
+  body('endLocation.longitude')
+    .optional()
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('Invalid end location longitude'),
+    
+  handleValidationErrors
+];
+
 const validateUpdateDeployment = [
   param('id')
     .isMongoId()
@@ -466,6 +549,7 @@ module.exports = {
   
   // Deployment validations
   validateCreateDeployment,
+  validateCreateDeploymentByRegistration,
   validateUpdateDeployment,
   validateCancelDeployment,
   

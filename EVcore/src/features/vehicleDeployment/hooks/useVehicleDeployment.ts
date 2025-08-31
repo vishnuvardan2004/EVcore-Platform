@@ -26,7 +26,7 @@ export const useVehicleDeployment = () => {
 
   const handleVehicleDetected = async (vehicleNumber: string) => {
     setSelectedVehicle(vehicleNumber);
-    console.log('Vehicle detected:', vehicleNumber);
+    console.log('Vehicle registration number detected:', vehicleNumber);
     
     try {
       const vehicle = await vehicleService.getVehicle(vehicleNumber);

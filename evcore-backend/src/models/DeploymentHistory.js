@@ -8,6 +8,20 @@ const deploymentHistorySchema = new mongoose.Schema({
     required: [true, 'Deployment reference is required']
   },
   
+  // Vehicle Reference Tracking (Phase 2 - Data Hub Integration)
+  vehicleReference: {
+    dataHubId: {
+      type: mongoose.Schema.Types.ObjectId,
+      // Reference to Data Hub vehicle
+    },
+    registrationNumber: String,
+    source: {
+      type: String,
+      enum: ['local', 'data-hub'],
+      default: 'local'
+    }
+  },
+  
   // Status Change Tracking
   statusChanges: [{
     previousStatus: {
