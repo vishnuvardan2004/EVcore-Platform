@@ -34,7 +34,7 @@ import { cn } from '../../../lib/utils';
 
 const OfflineBookings = () => {
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState<'create' | 'scheduled' | 'completed' | 'export'>('create');
+  const [activeView, setActiveView] = useState<'create' | 'bookings' | 'scheduled' | 'completed' | 'export'>('create');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [stats, setStats] = useState<BookingStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -85,6 +85,14 @@ const OfflineBookings = () => {
       color: 'bg-blue-500'
     },
     {
+      id: 'bookings',
+      label: 'All Bookings',
+      icon: Eye,
+      description: 'View & manage all bookings',
+      color: 'bg-indigo-500',
+      count: stats?.totalBookings || 0
+    },
+    {
       id: 'scheduled',
       label: 'Scheduled Rides',
       icon: Calendar,
@@ -118,6 +126,8 @@ const OfflineBookings = () => {
 
   const renderContent = () => {
     switch (activeView) {
+      case 'bookings':
+        return <BookingsView />;
       case 'scheduled':
         return <ScheduledRides />;
       case 'completed':

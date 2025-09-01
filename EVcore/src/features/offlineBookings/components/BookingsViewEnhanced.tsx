@@ -1,4 +1,3 @@
-
 /**
  * Enhanced Bookings View Component
  * 
@@ -73,7 +72,7 @@ interface PaginationInfo {
   totalPages: number;
 }
 
-export const BookingsView: React.FC = () => {
+export const BookingsViewEnhanced: React.FC = () => {
   // State management
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +88,7 @@ export const BookingsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [dateRange, setDateRange] = useState<{from?: Date; to?: Date} | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<{from?: Date; to?: Date}>({});
   const [showFilters, setShowFilters] = useState(false);
   
   // Pagination states
@@ -114,8 +113,8 @@ export const BookingsView: React.FC = () => {
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(typeFilter !== 'all' && { bookingType: typeFilter }),
         ...(searchTerm && { search: searchTerm }),
-        ...(dateRange?.from && { dateFrom: format(dateRange.from, 'yyyy-MM-dd') }),
-        ...(dateRange?.to && { dateTo: format(dateRange.to, 'yyyy-MM-dd') }),
+        ...(dateRange.from && { dateFrom: format(dateRange.from, 'yyyy-MM-dd') }),
+        ...(dateRange.to && { dateTo: format(dateRange.to, 'yyyy-MM-dd') }),
         ...filters
       };
 
@@ -184,7 +183,7 @@ export const BookingsView: React.FC = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setTypeFilter('all');
-    setDateRange(undefined);
+    setDateRange({});
     setFilters({});
     setPagination(prev => ({ ...prev, page: 1 }));
     loadBookings(1);
@@ -479,8 +478,8 @@ export const BookingsView: React.FC = () => {
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="justify-start text-left font-normal">
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange?.from ? (
-                        dateRange?.to ? (
+                      {dateRange.from ? (
+                        dateRange.to ? (
                           <>
                             {format(dateRange.from, "LLL dd")} - {format(dateRange.to, "LLL dd")}
                           </>
@@ -496,8 +495,8 @@ export const BookingsView: React.FC = () => {
                     <Calendar
                       initialFocus
                       mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange as any}
+                      defaultMonth={dateRange.from}
+                      selected={dateRange}
                       onSelect={setDateRange}
                       numberOfMonths={2}
                     />

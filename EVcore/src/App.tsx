@@ -3,7 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 // EVCORE Platform - Main Application Entry Point
 import Dashboard from './features/dashboard/pages/Dashboard';
 import Database from './features/databaseManagement/pages/Database';
+import { DatabaseWrapper } from './features/databaseManagement/components/DatabaseWrapper';
 import VehicleTracker from './features/vehicleDeployment/pages/VehicleTracker';
+import { VehicleTrackerWrapper } from './features/vehicleDeployment/pages/VehicleTrackerWrapper';
 import VehicleDamagesPage from './features/vehicleDeployment/pages/VehicleDamages';
 import RideHistory from './features/vehicleDeployment/pages/RideHistory';
 import LiveStatus from './features/vehicleDeployment/pages/LiveStatus';
@@ -89,7 +91,7 @@ const AppContent = () => {
             <Route path="/global-reports" element={<GlobalReports />} />
             <Route path="/language" element={<LanguageSelector />} />
             <Route path="/audit-logs" element={<AuditLogs />} />
-            <Route path="/vehicle-tracker" element={<VehicleTracker />} />
+            <Route path="/vehicle-tracker" element={<VehicleTrackerWrapper />} />
             <Route path="/vehicle-damages" element={<VehicleDamagesPage />} />
             <Route path="/ride-history" element={<RideHistory />} />
             <Route path="/live-status" element={<LiveStatus />} />
@@ -103,7 +105,7 @@ const AppContent = () => {
             <Route path="/driver-induction" element={<DriverInduction />} />
             
             {/* New Database Management System Routes */}
-            <Route path="/database-management" element={<Database />} />
+            <Route path="/database-management" element={<DatabaseWrapper />} />
             <Route path="/database-management/:module" element={<ModuleManagementPage />} />
             <Route path="/database-management/:module/create" element={<DocumentForm />} />
             <Route path="/database-management/:module/import" element={<ImportExportPage />} />

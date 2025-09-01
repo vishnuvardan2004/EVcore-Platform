@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Info, Zap } from 'lucide-react';
-import { VehicleScanner } from '../components/VehicleScannerWithAutocomplete';
+import { VehicleScannerWithAutocomplete } from '../components/VehicleScannerWithAutocomplete';
 
 export const VehicleAutocompleteDemo: React.FC = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
@@ -41,7 +41,7 @@ export const VehicleAutocompleteDemo: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Autocomplete Component */}
         <div>
-          <VehicleScanner
+          <VehicleScannerWithAutocomplete
             onVehicleDetected={handleVehicleDetected}
             isProcessing={isProcessing}
           />

@@ -8,6 +8,7 @@
 
 import { apiService } from './api';
 import { smartBookingsAPI, SmartBooking, BookingStats as SmartBookingStats, BookingFilters } from './smartBookingsAPI';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 
 // Legacy interface for backward compatibility
 export interface BookingData {
@@ -97,8 +98,7 @@ class BookingService {
   private api = apiService;
   private smartAPI = smartBookingsAPI;
   private offlineStorage: string = 'smartBookings';
-  private legacyStorage: string = 'bookings';
-
+  private legacyStorage: string = 'bookings'; // For backward compatibility
   constructor() {
     // Initialize with offline support
   }
@@ -439,9 +439,12 @@ class BookingService {
   }
 
   // ========================================
-  // PRIVATE METHODS FOR LOCAL STORAGE (OFFLINE SUPPORT)
+  // LEGACY METHODS FOR BACKWARD COMPATIBILITY
   // ========================================
 
+  /**
+   * Private methods for local storage operations (offline support)
+   */
   private async storeBookingLocally(booking: BookingData): Promise<void> {
     const bookings = await this.getLocalBookings();
     const existingIndex = bookings.findIndex(b => b.id === booking.id);
@@ -660,6 +663,195 @@ class BookingService {
   }
 }
 
-// Export singleton instance
+  // Private methods for local storage operations
+  private async storeBookingLocally(booking: BookingData): Promise<void> {
+    const bookings = await this.getLocalBookings();
+    const existingIndex = bookings.findIndex(b => b.id === booking.id);
+    
+    if (existingIndex >= 0) {
+      bookings[existingIndex] = booking;
+    } else {
+      bookings.push(booking);
+    }
+    
+    localStorage.setItem(this.offlineStorage, JSON.stringify(bookings));
+  }
+
+  private async updateLocalBooking(booking: BookingData): Promise<void> {
+    await this.storeBookingLocally(booking);
+  }
+
+  private async getLocalBookings(params?: {
+    status?: string;
+    type?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<BookingData[]> {
+    const stored = localStorage.getItem(this.offlineStorage);
+    let bookings: BookingData[] = stored ? JSON.parse(stored) : [];
+    
+    // Apply filters
+    if (params) {
+      if (params.status) {
+        const statuses = params.status.split(',');
+        bookings = bookings.filter(b => statuses.includes(b.status));
+      }
+      
+      if (params.type) {
+        bookings = bookings.filter(b => b.bookingType === params.type);
+      }
+      
+      if (params.dateFrom) {
+        bookings = bookings.filter(b => b.scheduledDate >= params.dateFrom!);
+      }
+      
+      if (params.dateTo) {
+        bookings = bookings.filter(b => b.scheduledDate <= params.dateTo!);
+      }
+      
+      // Pagination
+      if (params.page && params.limit) {
+        const start = (params.page - 1) * params.limit;
+        bookings = bookings.slice(start, start + params.limit);
+      }
+    }
+    
+    return bookings.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+  }
+
+  private async updateLocalBookingStatus(id: string, updateData: Partial<BookingData>): Promise<BookingData> {
+    const bookings = await this.getLocalBookings();
+    const bookingIndex = bookings.findIndex(b => b.id === id);
+    
+    if (bookingIndex === -1) {
+      throw new Error('Booking not found');
+    }
+    
+    bookings[bookingIndex] = { ...bookings[bookingIndex], ...updateData };
+    localStorage.setItem(this.offlineStorage, JSON.stringify(bookings));
+    
+    return bookings[bookingIndex];
+  }
+
+  private async updateLocalCache(serverBookings: BookingData[]): Promise<void> {
+    localStorage.setItem(this.offlineStorage, JSON.stringify(serverBookings));
+  }
+
+  private async queueForSync(booking: BookingData, operation: 'create' | 'update'): Promise<void> {
+    const pendingSync = JSON.parse(localStorage.getItem('pendingBookingSync') || '[]');
+    
+    pendingSync.push({
+      id: `${operation}_${booking.id}_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      type: 'booking',
+      operation,
+      data: booking
+    });
+    
+    localStorage.setItem('pendingBookingSync', JSON.stringify(pendingSync));
+  }
+
+  private async calculateLocalStats(): Promise<BookingStats> {
+    const allBookings = await this.getLocalBookings();
+    const today = new Date().toISOString().split('T')[0];
+    
+    const totalBookings = allBookings.length;
+    const scheduledRides = allBookings.filter(b => 
+      ['confirmed', 'assigned', 'pending'].includes(b.status) &&
+      b.scheduledDate >= today
+    ).length;
+    
+    const completedToday = allBookings.filter(b => 
+      b.status === 'completed' && 
+      b.completedAt?.split('T')[0] === today
+    ).length;
+    
+    const pendingPayments = allBookings.filter(b => 
+      b.paymentStatus === 'pending' || b.paymentStatus === 'partial'
+    ).length;
+    
+    const completedBookings = allBookings.filter(b => b.status === 'completed');
+    const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.actualCost || b.estimatedCost), 0);
+    
+    const ratedBookings = completedBookings.filter(b => b.rating);
+    const averageRating = ratedBookings.length > 0 
+      ? ratedBookings.reduce((sum, b) => sum + (b.rating || 0), 0) / ratedBookings.length 
+      : 0;
+    
+    const activeVehicles = new Set(
+      allBookings
+        .filter(b => ['confirmed', 'assigned', 'in_progress'].includes(b.status))
+        .map(b => b.vehicleNumber)
+        .filter(Boolean)
+    ).size;
+    
+    // Calculate top destinations
+    const destinationCounts: Record<string, number> = {};
+    allBookings.forEach(b => {
+      if (b.dropLocation) {
+        destinationCounts[b.dropLocation] = (destinationCounts[b.dropLocation] || 0) + 1;
+      }
+    });
+    
+    const topDestinations = Object.entries(destinationCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([location, count]) => ({ location, count }));
+    
+    // Revenue by type
+    const revenueByType: Record<string, number> = {};
+    completedBookings.forEach(b => {
+      const revenue = b.actualCost || b.estimatedCost;
+      revenueByType[b.bookingType] = (revenueByType[b.bookingType] || 0) + revenue;
+    });
+    
+    // Bookings by status
+    const bookingsByStatus: Record<string, number> = {};
+    allBookings.forEach(b => {
+      bookingsByStatus[b.status] = (bookingsByStatus[b.status] || 0) + 1;
+    });
+    
+    return {
+      totalBookings,
+      scheduledRides,
+      completedToday,
+      pendingPayments,
+      totalRevenue,
+      averageRating,
+      activeVehicles,
+      topDestinations,
+      revenueByType,
+      bookingsByStatus
+    };
+  }
+
+  // Sync pending submissions when online
+  async syncPendingSubmissions(): Promise<void> {
+    const pendingSync = JSON.parse(localStorage.getItem('pendingBookingSync') || '[]');
+    
+    if (pendingSync.length === 0) return;
+    
+    const synced = [];
+    
+    for (const item of pendingSync) {
+      try {
+        if (item.operation === 'create') {
+          await this.api.bookings.create(item.data);
+        } else if (item.operation === 'update') {
+          await this.api.bookings.update(item.data.id, item.data);
+        }
+        synced.push(item.id);
+      } catch (error) {
+        console.error('Failed to sync booking:', item.id, error);
+      }
+    }
+    
+    // Remove synced items
+    const remaining = pendingSync.filter((item: any) => !synced.includes(item.id));
+    localStorage.setItem('pendingBookingSync', JSON.stringify(remaining));
+  }
+}
+
 export const bookingService = new BookingService();
-export default bookingService;
