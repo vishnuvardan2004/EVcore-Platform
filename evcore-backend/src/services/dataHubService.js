@@ -47,8 +47,12 @@ class DataHubService {
     try {
       await this.ensureInitialized();
 
+      // Support both PascalCase (legacy) and camelCase (current) field naming
       const vehicle = await this.vehiclesCollection.findOne({
-        Registration_Number: { $regex: new RegExp(`^${registrationNumber}$`, 'i') }
+        $or: [
+          { Registration_Number: { $regex: new RegExp(`^${registrationNumber}$`, 'i') } },
+          { registrationNumber: { $regex: new RegExp(`^${registrationNumber}$`, 'i') } }
+        ]
       });
 
       if (vehicle) {
@@ -72,8 +76,12 @@ class DataHubService {
     try {
       await this.ensureInitialized();
 
+      // Support both PascalCase (legacy) and camelCase (current) field naming
       const vehicle = await this.vehiclesCollection.findOne({
-        Vehicle_ID: vehicleId
+        $or: [
+          { Vehicle_ID: vehicleId },
+          { vehicleId: vehicleId }
+        ]
       });
 
       if (vehicle) {
@@ -220,33 +228,37 @@ class DataHubService {
    */
   transformVehicleData(dbVehicle) {
     return {
-      // Reference data (from Database Management)
+      // Reference data (from Database Management) - Support both naming conventions
       dataHubId: dbVehicle._id.toString(),
-      vehicleId: dbVehicle.Vehicle_ID,
-      registrationNumber: dbVehicle.Registration_Number,
+      vehicleId: dbVehicle.Vehicle_ID || dbVehicle.vehicleId,
+      registrationNumber: dbVehicle.Registration_Number || dbVehicle.registrationNumber,
       
-      // Vehicle details
-      brand: dbVehicle.Brand,
-      model: dbVehicle.Model,
-      year: dbVehicle.Year,
-      color: dbVehicle.Color,
+      // Vehicle details - Support both naming conventions
+      brand: dbVehicle.Brand || dbVehicle.brand || dbVehicle.make || dbVehicle.Make,
+      model: dbVehicle.Model || dbVehicle.model,
+      year: dbVehicle.Year || dbVehicle.year,
+      color: dbVehicle.Color || dbVehicle.color,
       
-      // Technical specifications
-      vinNumber: dbVehicle.VIN_Number,
-      chassisNumber: dbVehicle.Chassis_Number,
-      engineNumber: dbVehicle.Engine_Number,
-      batteryCapacity: dbVehicle.Battery_Capacity,
-      range: dbVehicle.Range,
+      // Technical specifications - Support both naming conventions
+      vinNumber: dbVehicle.VIN_Number || dbVehicle.vinNumber,
+      chassisNumber: dbVehicle.Chassis_Number || dbVehicle.chassisNumber,
+      engineNumber: dbVehicle.Engine_Number || dbVehicle.engineNumber,
+      batteryCapacity: dbVehicle.Battery_Capacity || dbVehicle.batteryCapacity,
+      range: dbVehicle.Range || dbVehicle.range,
       
-      // Status and location
-      status: dbVehicle.Status,
-      currentHub: dbVehicle.Current_Hub,
-      assignedPilotId: dbVehicle.Assigned_Pilot_ID,
+      // Status and location - Support both naming conventions
+      status: dbVehicle.Status || dbVehicle.status,
+      currentHub: dbVehicle.Current_Hub || dbVehicle.currentHub,
+      assignedPilotId: dbVehicle.Assigned_Pilot_ID || dbVehicle.assignedPilotId,
+      
+      // Additional fields that might exist in either format
+      chargingType: dbVehicle.Charging_Port_Type || dbVehicle.chargingType,
+      seatingCapacity: dbVehicle.Seating_Capacity || dbVehicle.seatingCapacity,
       
       // Metadata
       isActive: dbVehicle.isActive !== false,
-      createdAt: dbVehicle.createdAt,
-      updatedAt: dbVehicle.updatedAt,
+      createdAt: dbVehicle.createdAt || dbVehicle.Added_Date,
+      updatedAt: dbVehicle.updatedAt || dbVehicle.Updated_Date,
       
       // Data source tracking
       source: 'data-hub',

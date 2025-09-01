@@ -51,6 +51,13 @@ router.get('/vehicles/available', validatePagination, vehicleDeploymentControlle
  */
 router.get('/vehicles/registration/:registrationNumber', vehicleDeploymentController.getVehicleByRegistration);
 
+/**
+ * @route   GET /api/vehicle-deployment/vehicles/autocomplete
+ * @desc    Get registration number suggestions for autocomplete
+ * @access  Private (Vehicle Deployment Module)
+ */
+router.get('/vehicles/autocomplete', vehicleDeploymentController.getRegistrationSuggestions);
+
 // Phase 3: Removed vehicle CRUD operations (POST, PUT, DELETE /vehicles)
 // All vehicle management now happens in Database Management module
 

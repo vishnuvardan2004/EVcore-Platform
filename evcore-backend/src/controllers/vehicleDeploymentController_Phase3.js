@@ -705,4 +705,69 @@ exports.completeDeployment = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Get registration number suggestions for autocomplete
+ * @route   GET /api/vehicle-deployment/vehicles/autocomplete
+ * @access  Private (Vehicle Deployment Module)
+ */
+exports.getRegistrationSuggestions = catchAsync(async (req, res) => {
+  const { q: query, limit = 10 } = req.query;
+  
+  if (!query || query.length < 1) {
+    return res.json({
+      success: true,
+      data: [],
+      message: 'No query provided'
+    });
+  }
+
+  const dataHubService = getDataHubService();
+  
+  try {
+    // Get all available vehicles from Data Hub
+    const vehicles = await dataHubService.getAvailableVehicles();
+    
+    // Filter vehicles by registration number, brand, or model pattern
+    const filteredVehicles = vehicles
+      .filter(vehicle => {
+        if (!vehicle.registrationNumber || vehicle.isActive === false) return false;
+        
+        const searchQuery = query.toLowerCase();
+        const registration = vehicle.registrationNumber.toLowerCase();
+        const brand = (vehicle.brand || '').toLowerCase();
+        const model = (vehicle.model || '').toLowerCase();
+        
+        return registration.includes(searchQuery) || 
+               brand.includes(searchQuery) || 
+               model.includes(searchQuery);
+      })
+      .slice(0, parseInt(limit))
+      .map(vehicle => ({
+        id: vehicle._id?.toString() || vehicle.vehicleId || vehicle.registrationNumber,
+        registrationNumber: vehicle.registrationNumber,
+        brand: vehicle.brand || 'Unknown',
+        model: vehicle.model || 'Unknown',
+        year: vehicle.year || vehicle.Year || new Date().getFullYear(),
+        status: vehicle.status || vehicle.Status || 'Active',
+        currentHub: vehicle.currentHub || vehicle.Current_Hub || 'Unknown'
+      }));
+
+    res.json({
+      success: true,
+      data: filteredVehicles,
+      total: filteredVehicles.length,
+      query: query,
+      message: `Found ${filteredVehicles.length} matching vehicles`
+    });
+    
+  } catch (error) {
+    logger.error('Error getting registration suggestions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get vehicle suggestions',
+      error: error.message
+    });
+  }
+});
+
 module.exports = exports;

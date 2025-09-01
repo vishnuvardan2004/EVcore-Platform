@@ -45,6 +45,13 @@ router.get('/vehicles', validatePagination, vehicleDeploymentController.getVehic
 router.get('/vehicles/available', validatePagination, vehicleDeploymentController.getAvailableVehicles);
 
 /**
+ * @route   GET /api/vehicle-deployment/vehicles/autocomplete
+ * @desc    Get registration number suggestions for autocomplete
+ * @access  Private (Vehicle Deployment Module)
+ */
+router.get('/vehicles/autocomplete', vehicleDeploymentController.getRegistrationSuggestions);
+
+/**
  * @route   GET /api/vehicle-deployment/vehicles/registration/:registrationNumber
  * @desc    Get a single vehicle by registration number from Data Hub
  * @access  Private (Vehicle Deployment Module)
